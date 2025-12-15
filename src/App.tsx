@@ -30,7 +30,7 @@ function App() {
 
   if (plan) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="min-h-screen bg-gradient-to-br from-rose-50 via-sky-50 to-violet-50 py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <TrainingPlanDisplay plan={plan} onReset={handleReset} />
         </div>
@@ -39,13 +39,13 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-sky-50 to-violet-50 py-8 px-4">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-rose-400 via-violet-400 to-sky-400 bg-clip-text text-transparent">
             Runathon
           </h1>
-          <p className="mt-2 text-lg text-gray-600">
+          <p className="mt-2 text-lg text-slate-500">
             Generate your personalized running training plan
           </p>
         </div>
@@ -73,8 +73,8 @@ function App() {
             disabled={!canGenerate}
             className={`px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-200 ${
               canGenerate
-                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl hover:scale-105'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                ? 'bg-gradient-to-r from-violet-400 to-sky-400 hover:from-violet-500 hover:to-sky-500 text-white shadow-lg hover:shadow-xl hover:scale-105'
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
           >
             Generate Training Plan
@@ -82,7 +82,7 @@ function App() {
         </div>
 
         {!selectedDistance && (
-          <p className="text-center text-gray-500 text-sm">
+          <p className="text-center text-slate-400 text-sm">
             Select a race distance to get started
           </p>
         )}

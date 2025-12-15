@@ -9,28 +9,28 @@ interface TrainingPlanDisplayProps {
 
 function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpanded: boolean; onToggle: () => void }) {
   const phaseColors: Record<string, string> = {
-    'Base Building': 'bg-green-100 text-green-800',
-    'Build Phase': 'bg-yellow-100 text-yellow-800',
-    'Peak Training': 'bg-orange-100 text-orange-800',
-    'Taper': 'bg-blue-100 text-blue-800',
+    'Base Building': 'bg-emerald-100 text-emerald-700',
+    'Build Phase': 'bg-amber-100 text-amber-700',
+    'Peak Training': 'bg-rose-100 text-rose-700',
+    'Taper': 'bg-sky-100 text-sky-700',
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+    <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-slate-200 overflow-hidden shadow-sm">
       <button
         onClick={onToggle}
-        className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        className="w-full p-4 flex items-center justify-between hover:bg-white/50 transition-colors"
       >
         <div className="flex items-center gap-4">
-          <span className="text-2xl font-bold text-gray-800">Week {week.week}</span>
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${phaseColors[week.phase] || 'bg-gray-100 text-gray-800'}`}>
+          <span className="text-2xl font-bold text-slate-700">Week {week.week}</span>
+          <span className={`px-3 py-1 rounded-full text-sm font-medium ${phaseColors[week.phase] || 'bg-slate-100 text-slate-700'}`}>
             {week.phase}
           </span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500">{week.totalMileage}</span>
+          <span className="text-sm text-slate-500">{week.totalMileage}</span>
           <svg
-            className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -41,32 +41,32 @@ function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpand
       </button>
 
       {isExpanded && (
-        <div className="border-t border-gray-100">
+        <div className="border-t border-slate-100">
           {week.days.map((day, idx) => (
             <div
               key={day.day}
-              className={`p-4 ${idx !== week.days.length - 1 ? 'border-b border-gray-100' : ''} ${
-                day.workout.includes('RACE DAY') ? 'bg-gradient-to-r from-blue-50 to-purple-50' : ''
+              className={`p-4 ${idx !== week.days.length - 1 ? 'border-b border-slate-100' : ''} ${
+                day.workout.includes('RACE DAY') ? 'bg-gradient-to-r from-violet-50 to-rose-50' : ''
               }`}
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
-                    <span className="font-medium text-gray-600 w-24">{day.day}</span>
-                    <span className={`font-semibold ${day.workout.includes('RACE DAY') ? 'text-blue-600 text-lg' : 'text-gray-800'}`}>
+                    <span className="font-medium text-slate-500 w-24">{day.day}</span>
+                    <span className={`font-semibold ${day.workout.includes('RACE DAY') ? 'text-violet-600 text-lg' : 'text-slate-700'}`}>
                       {day.workout}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500 mt-1 ml-0 md:ml-27">{day.description}</p>
+                  <p className="text-sm text-slate-500 mt-1 ml-0 md:ml-27">{day.description}</p>
                 </div>
                 <div className="flex gap-4 text-sm">
                   {day.pace && (
-                    <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg font-mono">
+                    <span className="px-3 py-1 bg-violet-50 text-violet-600 rounded-lg font-mono">
                       {day.pace}
                     </span>
                   )}
                   {day.distance && (
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg">
+                    <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg">
                       {day.distance}
                     </span>
                   )}
@@ -104,11 +104,11 @@ export function TrainingPlanDisplay({ plan, onReset }: TrainingPlanDisplayProps)
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
+      <div className="bg-gradient-to-r from-violet-400 via-rose-300 to-sky-400 rounded-2xl p-6 text-white shadow-lg">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 className="text-3xl font-bold">{info.name} Training Plan</h2>
-            <p className="text-blue-100 mt-2">{plan.summary}</p>
+            <p className="text-white/80 mt-2">{plan.summary}</p>
           </div>
           <button
             onClick={onReset}
@@ -120,36 +120,36 @@ export function TrainingPlanDisplay({ plan, onReset }: TrainingPlanDisplayProps)
 
         <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/20">
           <div>
-            <div className="text-sm text-blue-200">Current Pace</div>
+            <div className="text-sm text-white/70">Current Pace</div>
             <div className="text-xl font-bold font-mono">
               {plan.currentPace.minutes}:{plan.currentPace.seconds.toString().padStart(2, '0')}/km
             </div>
           </div>
           <div>
-            <div className="text-sm text-blue-200">Target Pace</div>
+            <div className="text-sm text-white/70">Target Pace</div>
             <div className="text-xl font-bold font-mono">
               {plan.targetPace.minutes}:{plan.targetPace.seconds.toString().padStart(2, '0')}/km
             </div>
           </div>
           <div>
-            <div className="text-sm text-blue-200">Duration</div>
+            <div className="text-sm text-white/70">Duration</div>
             <div className="text-xl font-bold">{info.weeks} weeks</div>
           </div>
         </div>
       </div>
 
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-semibold text-gray-800">Weekly Schedule</h3>
+        <h3 className="text-xl font-semibold text-slate-700">Weekly Schedule</h3>
         <div className="flex gap-2">
           <button
             onClick={expandAll}
-            className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="px-3 py-1 text-sm text-violet-600 hover:bg-violet-50 rounded-lg transition-colors"
           >
             Expand All
           </button>
           <button
             onClick={collapseAll}
-            className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            className="px-3 py-1 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
           >
             Collapse All
           </button>
