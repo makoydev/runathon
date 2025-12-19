@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DistanceSelector } from './components/DistanceSelector';
 import { PaceInput } from './components/PaceInput';
 import { TrainingPlanDisplay } from './components/TrainingPlanDisplay';
+import { TrainingDaysSelector } from './components/TrainingDaysSelector';
 import { generateTrainingPlan } from './utils/planGenerator';
 import type { RaceDistance, Pace, TrainingPlan } from './types';
 
@@ -9,6 +10,7 @@ function App() {
   const [selectedDistance, setSelectedDistance] = useState<RaceDistance | null>(null);
   const [currentPace, setCurrentPace] = useState<Pace>({ minutes: 6, seconds: 0 });
   const [targetPace, setTargetPace] = useState<Pace>({ minutes: 5, seconds: 30 });
+  const [trainingDays, setTrainingDays] = useState<number>(5);
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
   const [formVersion, setFormVersion] = useState(0);
 
@@ -23,7 +25,7 @@ function App() {
 
   const handleGenerate = () => {
     if (!selectedDistance || !hasValidPaces) return;
-    const newPlan = generateTrainingPlan(selectedDistance, currentPace, targetPace);
+    const newPlan = generateTrainingPlan(selectedDistance, currentPace, targetPace, trainingDays);
     setPlan(newPlan);
   };
 
@@ -32,6 +34,7 @@ function App() {
     setSelectedDistance(null);
     setCurrentPace({ minutes: 6, seconds: 0 });
     setTargetPace({ minutes: 5, seconds: 30 });
+    setTrainingDays(5);
     setFormVersion((version) => version + 1);
   };
 
@@ -75,6 +78,8 @@ function App() {
             onChange={setTargetPace}
           />
         </div>
+
+        <TrainingDaysSelector trainingDays={trainingDays} onChange={setTrainingDays} />
 
         <div className="flex justify-center">
           <button

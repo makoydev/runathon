@@ -9,6 +9,7 @@ export interface TrainingDay {
   day: string;
   workout: string;
   description: string;
+  dayType?: 'rest' | 'easy' | 'quality' | 'long' | 'recovery';
   pace?: string;
   distance?: string;
 }
@@ -24,6 +25,7 @@ export interface TrainingPlan {
   distance: RaceDistance;
   currentPace: Pace;
   targetPace: Pace;
+  trainingDays: number;
   weeks: TrainingWeek[];
   summary: string;
 }

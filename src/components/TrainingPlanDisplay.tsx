@@ -118,7 +118,7 @@ export function TrainingPlanDisplay({ plan, onReset }: TrainingPlanDisplayProps)
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/20">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/20">
           <div>
             <div className="text-sm text-white/70">Current Pace</div>
             <div className="text-xl font-bold font-mono">
@@ -134,6 +134,10 @@ export function TrainingPlanDisplay({ plan, onReset }: TrainingPlanDisplayProps)
           <div>
             <div className="text-sm text-white/70">Duration</div>
             <div className="text-xl font-bold">{info.weeks} weeks</div>
+          </div>
+          <div>
+            <div className="text-sm text-white/70">Training Days</div>
+            <div className="text-xl font-bold">{plan.trainingDays} days/week</div>
           </div>
         </div>
       </div>
