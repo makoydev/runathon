@@ -72,6 +72,32 @@ function generateWeeklyPlan(
   const taperMultiplier = phase === 'Taper' ? 0.6 : 1;
   const weeklyMileage = Math.round(baseMileage[distance] * taperMultiplier);
 
+  // Keep roughly 80/20 easy vs. quality (tempo/interval) distribution
+  const qualityFraction = phase === 'Taper' ? 0.12 : 0.2;
+  const targetQuality = weeklyMileage * qualityFraction;
+  let intervalDistance = Math.max(3, Math.round(targetQuality * 0.4));
+  let tempoDistance = Math.max(3, Math.round(targetQuality * 0.6));
+  const qualityCap = Math.round(weeklyMileage * (phase === 'Taper' ? 0.15 : 0.22));
+  const qualityTotal = intervalDistance + tempoDistance;
+  if (qualityTotal > qualityCap) {
+    const scale = qualityCap / qualityTotal;
+    intervalDistance = Math.max(2, Math.round(intervalDistance * scale));
+    tempoDistance = Math.max(3, Math.round(tempoDistance * scale));
+  }
+
+  const easyMileage = Math.max(0, weeklyMileage - intervalDistance - tempoDistance);
+  const longRunDistance = Math.min(Math.max(6, Math.round(easyMileage * 0.45)), easyMileage);
+  let remainingEasy = Math.max(0, easyMileage - longRunDistance);
+  const wednesdayDistance = remainingEasy > 0
+    ? Math.min(Math.max(3, Math.round(easyMileage * 0.2)), remainingEasy)
+    : 0;
+  remainingEasy = Math.max(0, remainingEasy - wednesdayDistance);
+  const sundayDistance = remainingEasy > 0
+    ? Math.min(Math.max(3, Math.round(easyMileage * 0.2)), remainingEasy)
+    : 0;
+  remainingEasy = Math.max(0, remainingEasy - sundayDistance);
+  const fridayOptional = Math.max(0, Math.round(remainingEasy));
+
   const days: TrainingDay[] = [
     {
       day: 'Monday',
@@ -82,45 +108,45 @@ function generateWeeklyPlan(
       day: 'Tuesday',
       workout: 'Interval Training',
       description: phase === 'Taper'
-        ? `4x400m at ${getIntervalPace(currentWeekPace)} with 90s recovery`
-        : `${Math.min(6 + Math.floor(progress * 4), 10)}x400m at ${getIntervalPace(currentWeekPace)} with 90s recovery`,
+        ? `4x400m at ${getIntervalPace(currentWeekPace)} with 90s recovery (single quality session this week)`
+        : `${Math.min(6 + Math.floor(progress * 4), 10)}x400m at ${getIntervalPace(currentWeekPace)} with 90s recovery (quality capped to ~20% of mileage)`,
       pace: getIntervalPace(currentWeekPace),
-      distance: phase === 'Taper' ? '4-5 km' : '6-8 km',
+      distance: `${intervalDistance} km`,
     },
     {
       day: 'Wednesday',
-      workout: 'Easy Run',
-      description: `Conversational pace run at ${getEasyPace(currentWeekPace)}`,
+      workout: 'Zone 2 Easy Run',
+      description: `Conversational pace run at ${getEasyPace(currentWeekPace)} (part of the 80% easy volume)`,
       pace: getEasyPace(currentWeekPace),
-      distance: `${Math.round(weeklyMileage * 0.15)} km`,
+      distance: wednesdayDistance > 0 ? `${wednesdayDistance} km` : 'Optional rest',
     },
     {
       day: 'Thursday',
-      workout: 'Tempo Run',
-      description: `Sustained effort at ${getTempoPace(currentWeekPace)} for ${Math.round(weeklyMileage * 0.12)} km`,
+      workout: 'Tempo / Threshold Run',
+      description: `Sustained effort at ${getTempoPace(currentWeekPace)} (kept within weekly quality budget)`,
       pace: getTempoPace(currentWeekPace),
-      distance: `${Math.round(weeklyMileage * 0.2)} km total`,
+      distance: `${tempoDistance} km total`,
     },
     {
       day: 'Friday',
       workout: 'Rest or Easy Run',
-      description: 'Optional short recovery run or complete rest',
+      description: 'Optional short Zone 1-2 recovery shuffle or complete rest',
       pace: getEasyPace(currentWeekPace),
-      distance: '3-4 km (optional)',
+      distance: fridayOptional > 0 ? `${fridayOptional} km (optional)` : 'Rest',
     },
     {
       day: 'Saturday',
-      workout: 'Long Run',
-      description: `Build endurance at ${getEasyPace(currentWeekPace)}`,
+      workout: 'Long Zone 2 Run',
+      description: `Build endurance at ${getEasyPace(currentWeekPace)} (core of the easy mileage)`,
       pace: getEasyPace(currentWeekPace),
-      distance: `${Math.round(weeklyMileage * 0.35)} km`,
+      distance: `${longRunDistance} km`,
     },
     {
       day: 'Sunday',
       workout: 'Recovery Run',
       description: `Very easy pace at ${formatPace(secondsToPace(currentWeekSeconds + 75))}`,
       pace: formatPace(secondsToPace(currentWeekSeconds + 75)),
-      distance: `${Math.round(weeklyMileage * 0.15)} km`,
+      distance: sundayDistance > 0 ? `${sundayDistance} km` : 'Rest',
     },
   ];
 
@@ -171,12 +197,13 @@ export function generateTrainingPlan(
     : timeImprovement < 0
       ? `That would add roughly ${Math.abs(timeImprovement)} minutes to your ${info.name} time - double-check that goal if it's unintended.`
       : `This keeps you steady at your current ${info.name} pace.`;
+  const distributionNote = 'Plan targets ~80% easy/Zone 2 mileage with a controlled quality block (tempo + intervals) each week.';
 
   return {
     distance,
     currentPace: normalizedCurrentPace,
     targetPace: normalizedTargetPace,
     weeks,
-    summary: `This ${info.weeks}-week plan will guide you from ${formatPace(normalizedCurrentPace)} to ${formatPace(normalizedTargetPace)} per kilometer. ${improvementText}`,
+    summary: `This ${info.weeks}-week plan will guide you from ${formatPace(normalizedCurrentPace)} to ${formatPace(normalizedTargetPace)} per kilometer. ${improvementText} ${distributionNote}`,
   };
 }
