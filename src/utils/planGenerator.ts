@@ -73,10 +73,11 @@ function generateWeeklyPlan(
   const weeklyMileage = Math.round(baseMileage[distance] * taperMultiplier);
 
   // Keep roughly 80/20 easy vs. quality (tempo/interval) distribution
-  const qualityFraction = phase === 'Taper' ? 0.12 : 0.2;
+  const qualityFraction = phase === 'Taper' ? 0.12 : phase === 'Base Building' ? 0.12 : 0.2;
+  const qualitySessions = phase === 'Base Building' ? 1 : phase === 'Taper' ? 1 : 2;
   const targetQuality = weeklyMileage * qualityFraction;
-  let intervalDistance = Math.max(3, Math.round(targetQuality * 0.4));
-  let tempoDistance = Math.max(3, Math.round(targetQuality * 0.6));
+  let intervalDistance = qualitySessions >= 2 ? Math.max(3, Math.round(targetQuality * 0.4)) : 0;
+  let tempoDistance = qualitySessions >= 1 ? Math.max(3, Math.round(targetQuality * (qualitySessions >= 2 ? 0.6 : 1))) : 0;
   const qualityCap = Math.round(weeklyMileage * (phase === 'Taper' ? 0.15 : 0.22));
   const qualityTotal = intervalDistance + tempoDistance;
   if (qualityTotal > qualityCap) {
@@ -106,12 +107,12 @@ function generateWeeklyPlan(
     },
     {
       day: 'Tuesday',
-      workout: 'Interval Training',
-      description: phase === 'Taper'
-        ? `4x400m at ${getIntervalPace(currentWeekPace)} with 90s recovery (single quality session this week)`
-        : `${Math.min(6 + Math.floor(progress * 4), 10)}x400m at ${getIntervalPace(currentWeekPace)} with 90s recovery (quality capped to ~20% of mileage)`,
-      pace: getIntervalPace(currentWeekPace),
-      distance: `${intervalDistance} km`,
+      workout: qualitySessions >= 2 ? 'Interval Training' : 'Strides + Drills',
+      description: qualitySessions >= 2
+        ? `${Math.min(6 + Math.floor(progress * 4), 10)}x400m at ${getIntervalPace(currentWeekPace)} with 90s recovery (quality capped to ~20% of mileage)`
+        : '3-4 km easy Zone 2 with 6-8x20s relaxed strides to build mechanics (keeps base weeks to one quality day)',
+      pace: qualitySessions >= 2 ? getIntervalPace(currentWeekPace) : getEasyPace(currentWeekPace),
+      distance: qualitySessions >= 2 ? `${intervalDistance} km` : '3-4 km easy + strides',
     },
     {
       day: 'Wednesday',
@@ -122,10 +123,12 @@ function generateWeeklyPlan(
     },
     {
       day: 'Thursday',
-      workout: 'Tempo / Threshold Run',
-      description: `Sustained effort at ${getTempoPace(currentWeekPace)} (kept within weekly quality budget)`,
-      pace: getTempoPace(currentWeekPace),
-      distance: `${tempoDistance} km total`,
+      workout: qualitySessions >= 1 ? 'Tempo / Threshold Run' : 'Zone 2 Easy Run',
+      description: qualitySessions >= 1
+        ? `Sustained effort at ${getTempoPace(currentWeekPace)} (kept within weekly quality budget)`
+        : `Another easy aerobic day at ${getEasyPace(currentWeekPace)} to prioritize base building`,
+      pace: qualitySessions >= 1 ? getTempoPace(currentWeekPace) : getEasyPace(currentWeekPace),
+      distance: qualitySessions >= 1 ? `${tempoDistance} km total` : `${Math.max(4, Math.round(weeklyMileage * 0.2))} km`,
     },
     {
       day: 'Friday',
