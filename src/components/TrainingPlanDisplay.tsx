@@ -57,7 +57,7 @@ function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpand
                       {day.workout}
                     </span>
                   </div>
-                  <p className="text-sm text-slate-500 mt-1 ml-0 md:ml-27">{day.description}</p>
+                  <p className="text-sm text-slate-500 mt-1 md:ml-[96px]">{day.description}</p>
                 </div>
                 <div className="flex gap-4 text-sm">
                   {day.pace && (

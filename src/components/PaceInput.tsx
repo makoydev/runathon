@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Pace } from '../types';
 
 interface PaceInputProps {
@@ -9,40 +9,43 @@ interface PaceInputProps {
 }
 
 export function PaceInput({ label, description, pace, onChange }: PaceInputProps) {
-  const [minutesInput, setMinutesInput] = useState(pace.minutes.toString());
-  const [secondsInput, setSecondsInput] = useState(pace.seconds.toString());
-
-  useEffect(() => {
-    setMinutesInput(pace.minutes.toString());
-    setSecondsInput(pace.seconds.toString());
-  }, [pace.minutes, pace.seconds]);
+  const [minutesInput, setMinutesInput] = useState(() => pace.minutes.toString());
+  const [secondsInput, setSecondsInput] = useState(() => pace.seconds.toString());
 
   const handleMinutesChange = (value: string) => {
-    setMinutesInput(value);
-    const parsed = parseInt(value);
-    if (!isNaN(parsed)) {
-      onChange({ ...pace, minutes: Math.max(0, Math.min(59, parsed)) });
+    const sanitized = value.replace(/\D/g, '');
+    if (sanitized === '') {
+      setMinutesInput('');
+      return;
     }
+
+    const parsed = parseInt(sanitized, 10);
+    const bounded = Math.max(0, Math.min(59, parsed));
+    setMinutesInput(bounded.toString());
+    onChange({ ...pace, minutes: bounded });
   };
 
   const handleSecondsChange = (value: string) => {
-    setSecondsInput(value);
-    const parsed = parseInt(value);
-    if (!isNaN(parsed)) {
-      onChange({ ...pace, seconds: Math.max(0, Math.min(59, parsed)) });
+    const sanitized = value.replace(/\D/g, '');
+    if (sanitized === '') {
+      setSecondsInput('');
+      return;
     }
+
+    const parsed = parseInt(sanitized, 10);
+    const bounded = Math.max(0, Math.min(59, parsed));
+    setSecondsInput(bounded.toString());
+    onChange({ ...pace, seconds: bounded });
   };
 
   const handleMinutesBlur = () => {
-    const parsed = parseInt(minutesInput);
-    if (isNaN(parsed) || minutesInput === '') {
+    if (minutesInput === '') {
       setMinutesInput(pace.minutes.toString());
     }
   };
 
   const handleSecondsBlur = () => {
-    const parsed = parseInt(secondsInput);
-    if (isNaN(parsed) || secondsInput === '') {
+    if (secondsInput === '') {
       setSecondsInput(pace.seconds.toString());
     }
   };

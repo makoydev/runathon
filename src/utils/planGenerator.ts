@@ -1,19 +1,21 @@
 import type { RaceDistance, Pace, TrainingPlan, TrainingWeek, TrainingDay } from '../types';
 import { DISTANCE_INFO } from '../types';
 
-function formatPace(pace: Pace): string {
-  return `${pace.minutes}:${pace.seconds.toString().padStart(2, '0')}/km`;
-}
-
 function paceToSeconds(pace: Pace): number {
-  return pace.minutes * 60 + pace.seconds;
+  return Math.max(0, pace.minutes * 60 + pace.seconds);
 }
 
-function secondsToPace(seconds: number): Pace {
+function secondsToPace(totalSeconds: number): Pace {
+  const normalizedSeconds = Math.max(0, Math.round(totalSeconds));
   return {
-    minutes: Math.floor(seconds / 60),
-    seconds: Math.round(seconds % 60),
+    minutes: Math.floor(normalizedSeconds / 60),
+    seconds: normalizedSeconds % 60,
   };
+}
+
+function formatPace(pace: Pace): string {
+  const normalized = secondsToPace(paceToSeconds(pace));
+  return `${normalized.minutes}:${normalized.seconds.toString().padStart(2, '0')}/km`;
 }
 
 function getEasyPace(pace: Pace): string {
@@ -39,11 +41,12 @@ function generateWeeklyPlan(
   targetPace: Pace
 ): TrainingWeek {
   const info = DISTANCE_INFO[distance];
+  const currentSeconds = paceToSeconds(currentPace);
+  const targetSeconds = paceToSeconds(targetPace);
   const progress = weekNum / totalWeeks;
-  const currentWeekPace = {
-    minutes: Math.floor((paceToSeconds(currentPace) - (paceToSeconds(currentPace) - paceToSeconds(targetPace)) * progress) / 60),
-    seconds: Math.round((paceToSeconds(currentPace) - (paceToSeconds(currentPace) - paceToSeconds(targetPace)) * progress) % 60),
-  };
+  const interpolatedSeconds = currentSeconds - (currentSeconds - targetSeconds) * progress;
+  const currentWeekPace = secondsToPace(interpolatedSeconds);
+  const currentWeekSeconds = paceToSeconds(currentWeekPace);
 
   // Determine training phase
   let phase: string;
@@ -115,8 +118,8 @@ function generateWeeklyPlan(
     {
       day: 'Sunday',
       workout: 'Recovery Run',
-      description: `Very easy pace at ${formatPace(secondsToPace(paceToSeconds(currentWeekPace) + 75))}`,
-      pace: formatPace(secondsToPace(paceToSeconds(currentWeekPace) + 75)),
+      description: `Very easy pace at ${formatPace(secondsToPace(currentWeekSeconds + 75))}`,
+      pace: formatPace(secondsToPace(currentWeekSeconds + 75)),
       distance: `${Math.round(weeklyMileage * 0.15)} km`,
     },
   ];
@@ -153,20 +156,27 @@ export function generateTrainingPlan(
   targetPace: Pace
 ): TrainingPlan {
   const info = DISTANCE_INFO[distance];
+  const normalizedCurrentPace = secondsToPace(paceToSeconds(currentPace));
+  const normalizedTargetPace = secondsToPace(paceToSeconds(targetPace));
   const weeks: TrainingWeek[] = [];
 
   for (let i = 1; i <= info.weeks; i++) {
-    weeks.push(generateWeeklyPlan(i, info.weeks, distance, currentPace, targetPace));
+    weeks.push(generateWeeklyPlan(i, info.weeks, distance, normalizedCurrentPace, normalizedTargetPace));
   }
 
-  const paceImprovement = paceToSeconds(currentPace) - paceToSeconds(targetPace);
+  const paceImprovement = paceToSeconds(normalizedCurrentPace) - paceToSeconds(normalizedTargetPace);
   const timeImprovement = Math.round((paceImprovement * info.km) / 60);
+  const improvementText = timeImprovement > 0
+    ? `That's a potential improvement of ~${timeImprovement} minutes on your ${info.name} time!`
+    : timeImprovement < 0
+      ? `That would add roughly ${Math.abs(timeImprovement)} minutes to your ${info.name} time - double-check that goal if it's unintended.`
+      : `This keeps you steady at your current ${info.name} pace.`;
 
   return {
     distance,
-    currentPace,
-    targetPace,
+    currentPace: normalizedCurrentPace,
+    targetPace: normalizedTargetPace,
     weeks,
-    summary: `This ${info.weeks}-week plan will help you improve from ${formatPace(currentPace)} to ${formatPace(targetPace)} per kilometer. That's a potential improvement of ~${timeImprovement} minutes on your ${info.name} time!`,
+    summary: `This ${info.weeks}-week plan will guide you from ${formatPace(normalizedCurrentPace)} to ${formatPace(normalizedTargetPace)} per kilometer. ${improvementText}`,
   };
 }

@@ -10,13 +10,19 @@ function App() {
   const [currentPace, setCurrentPace] = useState<Pace>({ minutes: 6, seconds: 0 });
   const [targetPace, setTargetPace] = useState<Pace>({ minutes: 5, seconds: 30 });
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
+  const [formVersion, setFormVersion] = useState(0);
 
-  const canGenerate = selectedDistance !== null &&
+  const hasValidPaces =
     (currentPace.minutes > 0 || currentPace.seconds > 0) &&
     (targetPace.minutes > 0 || targetPace.seconds > 0);
+  const currentSeconds = currentPace.minutes * 60 + currentPace.seconds;
+  const targetSeconds = targetPace.minutes * 60 + targetPace.seconds;
+  const targetNotFaster = targetSeconds >= currentSeconds;
+
+  const canGenerate = selectedDistance !== null && hasValidPaces;
 
   const handleGenerate = () => {
-    if (!selectedDistance) return;
+    if (!selectedDistance || !hasValidPaces) return;
     const newPlan = generateTrainingPlan(selectedDistance, currentPace, targetPace);
     setPlan(newPlan);
   };
@@ -26,6 +32,7 @@ function App() {
     setSelectedDistance(null);
     setCurrentPace({ minutes: 6, seconds: 0 });
     setTargetPace({ minutes: 5, seconds: 30 });
+    setFormVersion((version) => version + 1);
   };
 
   if (plan) {
@@ -54,12 +61,14 @@ function App() {
 
         <div className="grid md:grid-cols-2 gap-6">
           <PaceInput
+            key={`current-${formVersion}`}
             label="Current Pace"
             description="Your current average pace per kilometer"
             pace={currentPace}
             onChange={setCurrentPace}
           />
           <PaceInput
+            key={`target-${formVersion}`}
             label="Target Pace"
             description="Your goal pace for race day"
             pace={targetPace}
@@ -80,6 +89,12 @@ function App() {
             Generate Training Plan
           </button>
         </div>
+
+        {hasValidPaces && targetNotFaster && (
+          <p className="text-center text-amber-600 text-sm">
+            Target pace is not faster than your current pace. The plan will focus on maintenance unless you set a quicker goal.
+          </p>
+        )}
 
         {!selectedDistance && (
           <p className="text-center text-slate-400 text-sm">
