@@ -49,7 +49,7 @@ function generateWeeklyPlan(
   const currentWeekPace = secondsToPace(interpolatedSeconds);
   const currentWeekSeconds = paceToSeconds(currentWeekPace);
 
-  // Determine training phase
+  // Determine training phases
   let phase: string;
   if (progress < 0.25) {
     phase = 'Base Building';
