@@ -16,6 +16,7 @@ A simple web app for generating personalized running training plans based on you
 - TypeScript
 - Vite
 - Tailwind CSS v4
+- Vitest (testing)
 
 ## Getting Started
 
@@ -28,6 +29,15 @@ npm run dev
 
 # Build for production
 npm run build
+
+# Run tests
+npm test
+
+# Run tests once (CI mode)
+npm run test:run
+
+# Run tests with coverage
+npm run test:coverage
 ```
 
 ## Project Structure
@@ -35,14 +45,18 @@ npm run build
 ```
 src/
 ├── components/
-│   ├── DistanceSelector.tsx  # Race distance selection UI
-│   ├── PaceInput.tsx         # Pace input component
+│   ├── DistanceSelector.tsx    # Race distance selection UI
+│   ├── PaceInput.tsx           # Pace input component
+│   ├── TrainingDaysSelector.tsx # Training days per week selector
 │   └── TrainingPlanDisplay.tsx # Plan visualization
 ├── utils/
-│   └── planGenerator.ts      # Training plan generation logic
-├── types.ts                  # TypeScript type definitions
-├── App.tsx                   # Main application component
-└── index.css                 # Tailwind CSS imports
+│   ├── planGenerator.ts        # Training plan generation logic
+│   └── planGenerator.test.ts   # Unit tests for plan generator
+├── test/
+│   └── setup.ts                # Test configuration
+├── types.ts                    # TypeScript type definitions
+├── App.tsx                     # Main application component
+└── index.css                   # Tailwind CSS imports
 ```
 
 ## How It Works
