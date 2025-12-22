@@ -15,10 +15,15 @@ function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpand
     'Taper': 'bg-sky-100 text-sky-700',
   };
 
+  const contentId = `week-${week.week}-content`;
+
   return (
     <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-slate-200 overflow-hidden shadow-sm">
       <button
         onClick={onToggle}
+        aria-expanded={isExpanded}
+        aria-controls={contentId}
+        aria-label={`Week ${week.week}, ${week.phase}, ${week.totalMileage}. Click to ${isExpanded ? 'collapse' : 'expand'} details.`}
         className="w-full p-4 flex items-center justify-between hover:bg-white/50 transition-colors"
       >
         <div className="flex items-center gap-4">
@@ -34,6 +39,7 @@ function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpand
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
+            aria-hidden="true"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
@@ -41,7 +47,7 @@ function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpand
       </button>
 
       {isExpanded && (
-        <div className="border-t border-slate-100">
+        <div id={contentId} role="region" aria-label={`Week ${week.week} schedule`} className="border-t border-slate-100">
           {week.days.map((day, idx) => (
             <div
               key={day.day}
@@ -112,6 +118,7 @@ export function TrainingPlanDisplay({ plan, onReset }: TrainingPlanDisplayProps)
           </div>
           <button
             onClick={onReset}
+            aria-label="Create a new training plan"
             className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors font-medium"
           >
             Create New Plan
@@ -147,12 +154,14 @@ export function TrainingPlanDisplay({ plan, onReset }: TrainingPlanDisplayProps)
         <div className="flex gap-2">
           <button
             onClick={expandAll}
+            aria-label="Expand all weeks"
             className="px-3 py-1 text-sm text-violet-600 hover:bg-violet-50 rounded-lg transition-colors"
           >
             Expand All
           </button>
           <button
             onClick={collapseAll}
+            aria-label="Collapse all weeks"
             className="px-3 py-1 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
           >
             Collapse All

@@ -18,8 +18,12 @@ export function DistanceSelector({ selected, onSelect }: DistanceSelectorProps) 
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-slate-700">Choose Your Race Distance</h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <h2 id="distance-selector-label" className="text-xl font-semibold text-slate-700">Choose Your Race Distance</h2>
+      <div
+        role="group"
+        aria-labelledby="distance-selector-label"
+        className="grid grid-cols-2 md:grid-cols-4 gap-4"
+      >
         {distances.map((distance) => {
           const info = DISTANCE_INFO[distance];
           const isSelected = selected === distance;
@@ -29,6 +33,8 @@ export function DistanceSelector({ selected, onSelect }: DistanceSelectorProps) 
             <button
               key={distance}
               onClick={() => onSelect(distance)}
+              aria-pressed={isSelected}
+              aria-label={`${info.name}, ${info.km} kilometers, ${info.weeks} week plan`}
               className={`p-6 rounded-xl border-2 transition-all duration-200 ${
                 isSelected
                   ? `${colors.border} ${colors.bg} shadow-lg scale-105`

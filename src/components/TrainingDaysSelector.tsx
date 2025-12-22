@@ -10,16 +10,23 @@ export function TrainingDaysSelector({ trainingDays, onChange }: TrainingDaysSel
     <div className="bg-white/70 backdrop-blur-sm p-6 rounded-xl border border-slate-200 shadow-sm space-y-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-lg font-semibold text-slate-700">Training Days per Week</h2>
-          <p className="text-sm text-slate-500">We'll tailor quality vs. easy to match your availability.</p>
+          <h2 id="training-days-label" className="text-lg font-semibold text-slate-700">Training Days per Week</h2>
+          <p id="training-days-description" className="text-sm text-slate-500">We'll tailor quality vs. easy to match your availability.</p>
         </div>
-        <div className="flex gap-2">
+        <div
+          role="group"
+          aria-labelledby="training-days-label"
+          aria-describedby="training-days-description"
+          className="flex gap-2"
+        >
           {options.map((option) => {
             const selected = option === trainingDays;
             return (
               <button
                 key={option}
                 onClick={() => onChange(option)}
+                aria-pressed={selected}
+                aria-label={`${option} days per week`}
                 className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ${
                   selected
                     ? 'bg-violet-500 text-white border-violet-500 shadow-sm'
