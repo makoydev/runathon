@@ -199,7 +199,7 @@ function generateWeeklyPlan(
     : ['Friday', 'Sunday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday'];
   for (const dayName of removalPriority) {
     if (runDays() <= trainingDays) break;
-    if (weekNum === totalWeeks && dayName === 'Sunday') continue; // never remove race day
+    if (weekNum === totalWeeks && dayName === 'Sunday') continue; // never remove race dayss
     downgradeToRest(dayName);
   }
 
