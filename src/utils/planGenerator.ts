@@ -210,7 +210,7 @@ function generateWeeklyPlan(
     totalMileage: `${weeklyMileage} km`,
   };
 }
-//generate training plan
+//generate training
 export function generateTrainingPlan(
   distance: RaceDistance,
   currentPace: Pace,
