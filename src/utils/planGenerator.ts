@@ -193,7 +193,7 @@ function generateWeeklyPlan(
     };
   }
 
-  // Trim to users available training days (prioritize keeping long + tempo; protect race day
+  // Trim to users available training days (prioritize keeping long + tempo; protect race
   const removalPriority = weekNum === totalWeeks
     ? ['Wednesday', 'Friday', 'Tuesday', 'Saturday', 'Thursday']
     : ['Friday', 'Sunday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday'];
