@@ -235,6 +235,7 @@ export function generateTrainingPlan(
       : `This keeps you steady at your current ${info.name} pace.`;
   const distributionNote = 'Plan targets ~80% easy/Zone 2 mileage with a controlled quality block (tempo + intervals) each week.';
 
+  //return distance
   return {
     distance,
     currentPace: normalizedCurrentPace,
