@@ -221,7 +221,7 @@ export function generateTrainingPlan(
   const normalizedCurrentPace = secondsToPace(paceToSeconds(currentPace));
   const normalizedTargetPace = secondsToPace(paceToSeconds(targetPace));
   const weeks: TrainingWeek[] = [];
-//loop for weeks
+
   for (let i = 1; i <= info.weeks; i++) {
     weeks.push(generateWeeklyPlan(i, info.weeks, distance, normalizedCurrentPace, normalizedTargetPace, trainingDays));
   }
