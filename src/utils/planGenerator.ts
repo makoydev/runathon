@@ -173,7 +173,7 @@ function generateWeeklyPlan(
     },
   ];
 
-  // Adjust final week for race days
+  // Adjust final week
   if (weekNum === totalWeeks) {
     days[5] = {
       day: 'Saturday',
