@@ -202,7 +202,7 @@ function generateWeeklyPlan(
     if (weekNum === totalWeeks && dayName === 'Sunday') continue; // never remove the race day
     downgradeToRest(dayName);
   }
-
+// return weeknum
   return {
     week: weekNum,
     phase,
