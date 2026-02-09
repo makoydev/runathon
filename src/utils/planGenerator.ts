@@ -210,7 +210,6 @@ function generateWeeklyPlan(
   };
 }
 
-//export generate plans
 export function generateTrainingPlan(
   distance: RaceDistance,
   currentPace: Pace,
