@@ -217,6 +217,7 @@ export function generateTrainingPlan(
   trainingDays: number
 ): TrainingPlan {
   const info = DISTANCE_INFO[distance];
+  //normalizedCurrentPace
   const normalizedCurrentPace = secondsToPace(paceToSeconds(currentPace));
   const normalizedTargetPace = secondsToPace(paceToSeconds(targetPace));
   const weeks: TrainingWeek[] = [];
