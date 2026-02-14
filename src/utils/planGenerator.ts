@@ -202,7 +202,6 @@ function generateWeeklyPlan(
     if (weekNum === totalWeeks && dayName === 'Sunday') continue; // never remove the race day
     downgradeToRest(dayName);
   }
-  //weekly mileage
   return {
     week: weekNum,
     phase,
