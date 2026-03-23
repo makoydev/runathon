@@ -87,8 +87,9 @@ function generateWeeklyPlan(
     intervalDistance = Math.max(2, Math.round(intervalDistance * scale));
     tempoDistance = Math.max(3, Math.round(tempoDistance * scale));
   }
-  // remove easy mileage
+  // add easy mileage
   const easyMileage = Math.max(0, weeklyMileage - intervalDistance - tempoDistance);
+  // add long run distance
   const longRunDistance = Math.min(Math.max(6, Math.round(easyMileage * 0.45)), easyMileage);
   let remainingEasy = Math.max(0, easyMileage - longRunDistance);
   const wednesdayDistance = remainingEasy > 0
