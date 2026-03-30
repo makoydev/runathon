@@ -69,7 +69,7 @@ function generateWeeklyPlan(
     'full': 30 + progress * 30,
   };
 
-  
+  // Reduce mileage during taper
   const taperMultiplier = phase === 'Taper' ? 0.6 : 1;
   const weeklyMileage = Math.round(baseMileage[distance] * taperMultiplier);
 
