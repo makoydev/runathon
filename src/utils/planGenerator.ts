@@ -82,7 +82,6 @@ function generateWeeklyPlan(
   let tempoDistance = qualitySessions >= 1 ? Math.max(3, Math.round(targetQuality * (qualitySessions >= 2 ? 0.6 : 1))) : 0;
   const qualityCap = Math.round(weeklyMileage * (phase === 'Taper' ? 0.15 : 0.22));
   const qualityTotal = intervalDistance + tempoDistance;
-  //
   if (qualityTotal > qualityCap) {
     const scale = qualityCap / qualityTotal;
     intervalDistance = Math.max(2, Math.round(intervalDistance * scale));
