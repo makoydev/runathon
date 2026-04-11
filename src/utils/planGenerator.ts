@@ -114,6 +114,7 @@ function generateWeeklyPlan(
     day.dayType = 'rest';
   };
 
+  // add training days
   const days: TrainingDay[] = [
     {
       day: 'Monday',
