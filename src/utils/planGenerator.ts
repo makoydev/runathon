@@ -196,7 +196,7 @@ function generateWeeklyPlan(
     };
   }
 
-  // Trim to users available training days
+  // Trim to users available training days (prioritize keeping 
   const removalPriority = weekNum === totalWeeks
     ? ['Wednesday', 'Friday', 'Tuesday', 'Saturday', 'Thursday']
     : ['Friday', 'Sunday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday'];
