@@ -205,6 +205,7 @@ function generateWeeklyPlan(
     if (weekNum === totalWeeks && dayName === 'Sunday') continue; 
     downgradeToRest(dayName);
   }
+  //return weeknum
   return {
     week: weekNum,
     phase,
