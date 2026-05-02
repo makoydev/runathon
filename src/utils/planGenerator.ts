@@ -229,7 +229,7 @@ export function generateTrainingPlan(
   for (let i = 1; i <= info.weeks; i++) {
     weeks.push(generateWeeklyPlan(i, info.weeks, distance, normalizedCurrentPace, normalizedTargetPace, trainingDays));
   }
-// ADD PACE IMPROVEMENTS
+// ADD PACE IMPROVEMENTS AND TIME
   const paceImprovement = paceToSeconds(normalizedCurrentPace) - paceToSeconds(normalizedTargetPace);
   const timeImprovement = Math.round((paceImprovement * info.km) / 60);
   const improvementText = timeImprovement > 0
