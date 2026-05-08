@@ -205,7 +205,7 @@ function generateWeeklyPlan(
     if (weekNum === totalWeeks && dayName === 'Sunday') continue; 
     downgradeToRest(dayName);
   }
-  //return weeknum
+  //return
   return {
     week: weekNum,
     phase,
@@ -229,7 +229,7 @@ export function generateTrainingPlan(
   for (let i = 1; i <= info.weeks; i++) {
     weeks.push(generateWeeklyPlan(i, info.weeks, distance, normalizedCurrentPace, normalizedTargetPace, trainingDays));
   }
-// ADD PACE IMPROVEMENTS AND
+// ADD PACE IMPROVEMENTS
   const paceImprovement = paceToSeconds(normalizedCurrentPace) - paceToSeconds(normalizedTargetPace);
   const timeImprovement = Math.round((paceImprovement * info.km) / 60);
   const improvementText = timeImprovement > 0
