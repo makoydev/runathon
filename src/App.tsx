@@ -12,7 +12,6 @@ function App() {
   const [targetPace, setTargetPace] = useState<Pace>({ minutes: 5, seconds: 30 });
   const [trainingDays, setTrainingDays] = useState<number>(5);
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
-  const [formVersion, setFormVersion] = useState(0);
 
   const hasValidPaces =
     (currentPace.minutes > 0 || currentPace.seconds > 0) &&
@@ -35,7 +34,6 @@ function App() {
     setCurrentPace({ minutes: 6, seconds: 0 });
     setTargetPace({ minutes: 5, seconds: 30 });
     setTrainingDays(5);
-    setFormVersion((version) => version + 1);
   };
 
   if (plan) {
@@ -64,14 +62,12 @@ function App() {
 
         <div className="grid md:grid-cols-2 gap-6">
           <PaceInput
-            key={`current-${formVersion}`}
             label="Current Pace"
             description="Your current average pace per kilometer"
             pace={currentPace}
             onChange={setCurrentPace}
           />
           <PaceInput
-            key={`target-${formVersion}`}
             label="Target Pace"
             description="Your goal pace for race day"
             pace={targetPace}

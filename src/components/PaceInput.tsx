@@ -1,4 +1,4 @@
-import { useState, useId } from 'react';
+import { useId } from 'react';
 import type { Pace } from '../types';
 
 interface PaceInputProps {
@@ -10,45 +10,21 @@ interface PaceInputProps {
 
 export function PaceInput({ label, description, pace, onChange }: PaceInputProps) {
   const id = useId();
-  const [minutesInput, setMinutesInput] = useState(() => pace.minutes.toString());
-  const [secondsInput, setSecondsInput] = useState(() => pace.seconds.toString());
 
-  const handleMinutesChange = (value: string) => {
+  const parsePacePart = (value: string): number => {
     const sanitized = value.replace(/\D/g, '');
-    if (sanitized === '') {
-      setMinutesInput('');
-      return;
-    }
+    if (sanitized === '') return 0;
 
     const parsed = parseInt(sanitized, 10);
-    const bounded = Math.max(0, Math.min(59, parsed));
-    setMinutesInput(bounded.toString());
-    onChange({ ...pace, minutes: bounded });
+    return Math.max(0, Math.min(59, parsed));
+  };
+
+  const handleMinutesChange = (value: string) => {
+    onChange({ ...pace, minutes: parsePacePart(value) });
   };
 
   const handleSecondsChange = (value: string) => {
-    const sanitized = value.replace(/\D/g, '');
-    if (sanitized === '') {
-      setSecondsInput('');
-      return;
-    }
-
-    const parsed = parseInt(sanitized, 10);
-    const bounded = Math.max(0, Math.min(59, parsed));
-    setSecondsInput(bounded.toString());
-    onChange({ ...pace, seconds: bounded });
-  };
-
-  const handleMinutesBlur = () => {
-    if (minutesInput === '') {
-      setMinutesInput(pace.minutes.toString());
-    }
-  };
-
-  const handleSecondsBlur = () => {
-    if (secondsInput === '') {
-      setSecondsInput(pace.seconds.toString());
-    }
+    onChange({ ...pace, seconds: parsePacePart(value) });
   };
 
   const minutesId = `${id}-minutes`;
@@ -69,9 +45,8 @@ export function PaceInput({ label, description, pace, onChange }: PaceInputProps
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
-            value={minutesInput}
+            value={pace.minutes.toString()}
             onChange={(e) => handleMinutesChange(e.target.value)}
-            onBlur={handleMinutesBlur}
             aria-describedby={descriptionId}
             className="w-full px-4 py-3 text-2xl font-mono text-center border border-slate-200 rounded-lg focus:ring-2 focus:ring-violet-300 focus:border-violet-300 outline-none bg-white/80"
             placeholder="0"
@@ -86,9 +61,8 @@ export function PaceInput({ label, description, pace, onChange }: PaceInputProps
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
-            value={secondsInput}
+            value={pace.seconds.toString()}
             onChange={(e) => handleSecondsChange(e.target.value)}
-            onBlur={handleSecondsBlur}
             aria-describedby={descriptionId}
             className="w-full px-4 py-3 text-2xl font-mono text-center border border-slate-200 rounded-lg focus:ring-2 focus:ring-violet-300 focus:border-violet-300 outline-none bg-white/80"
             placeholder="0"

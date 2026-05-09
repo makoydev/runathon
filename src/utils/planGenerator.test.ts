@@ -75,6 +75,21 @@ describe('generateTrainingPlan', () => {
   })
 
   describe('80/20 easy vs quality distribution', () => {
+    const parseMileage = (mileage: string) => Number(mileage.replace(' km', ''))
+
+    it('reports total mileage from the retained non-rest workouts', () => {
+      const plan = generateTrainingPlan('half', defaultCurrentPace, defaultTargetPace, 3)
+
+      plan.weeks.forEach((week) => {
+        const scheduledMileage = week.days.reduce((total, day) => {
+          if (day.dayType === 'rest') return total
+          return total + (day.distanceKm ?? 0)
+        }, 0)
+
+        expect(parseMileage(week.totalMileage)).toBeCloseTo(scheduledMileage, 1)
+      })
+    })
+
     it('limits quality training to approximately 20% of weekly mileage (excluding race week)', () => {
       const plan = generateTrainingPlan('half', defaultCurrentPace, defaultTargetPace, 5)
 
@@ -271,6 +286,14 @@ describe('generateTrainingPlan', () => {
       const plan = generateTrainingPlan('5k', defaultCurrentPace, defaultTargetPace, defaultTrainingDays)
       expect(plan.summary).toContain('6:00')
       expect(plan.summary).toContain('5:30')
+    })
+
+    it('does not mention interval work when the selected schedule removes intervals', () => {
+      const plan = generateTrainingPlan('5k', defaultCurrentPace, defaultTargetPace, 3)
+
+      expect(plan.weeks.flatMap((week) => week.days).some((day) => day.workout === 'Interval Training')).toBe(false)
+      expect(plan.summary).toContain('tempo work')
+      expect(plan.summary).not.toContain('interval work')
     })
   })
 

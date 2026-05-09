@@ -12,6 +12,7 @@ export interface TrainingDay {
   dayType?: 'rest' | 'easy' | 'quality' | 'long' | 'recovery';
   pace?: string;
   distance?: string;
+  distanceKm?: number;
 }
 
 export interface TrainingWeek {

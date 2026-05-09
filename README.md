@@ -20,6 +20,10 @@ A simple web app for generating personalized running training plans based on you
 
 ## Getting Started
 
+### Requirements
+
+- Node.js 22.12.0 or newer
+
 ```bash
 # Install dependencies
 npm install
@@ -71,6 +75,21 @@ The app generates a multi-week plan with:
 - Varied workout types (intervals, tempo, easy, long runs)
 - Appropriate taper period before race day
 - Estimated time improvements based on your pace goals
+
+## Implementation Notes
+
+- Weekly mileage is calculated from the workouts that remain after the selected training-days-per-week adjustment. Rest-day trimming happens before totals are displayed.
+- Each scheduled workout stores a numeric `distanceKm` value alongside its display text, so tests and summaries do not need to parse UI strings.
+- Pace inputs are controlled by app state. Clearing a pace field commits `0`, preventing hidden stale values from being used when generating a plan.
+- Summary copy is generated from the actual workout types in the plan, so lower-frequency plans do not claim interval sessions when those sessions have been removed.
+
+## Quality Checks
+
+```bash
+npm run lint
+npm run test:run
+npm run build
+```
 
 ## Training Plan Philosophy
 

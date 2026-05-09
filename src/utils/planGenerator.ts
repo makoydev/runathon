@@ -18,6 +18,22 @@ function formatPace(pace: Pace): string {
   return `${normalized.minutes}:${normalized.seconds.toString().padStart(2, '0')}/km`;
 }
 
+function formatDistance(distanceKm: number): string {
+  const rounded = Math.round(distanceKm * 10) / 10;
+  return Number.isInteger(rounded) ? `${rounded} km` : `${rounded.toFixed(1)} km`;
+}
+
+function formatMileage(distanceKm: number): string {
+  return formatDistance(distanceKm);
+}
+
+function scheduledMileage(days: TrainingDay[]): number {
+  return days.reduce((total, day) => {
+    if (day.dayType === 'rest') return total;
+    return total + (day.distanceKm ?? 0);
+  }, 0);
+}
+
 function getEasyPace(pace: Pace): string {
   const seconds = paceToSeconds(pace) + 60; // Easy pace is ~60 sec slower
   return formatPace(secondsToPace(seconds));
@@ -82,23 +98,28 @@ function generateWeeklyPlan(
   let tempoDistance = qualitySessions >= 1 ? Math.max(3, Math.round(targetQuality * (qualitySessions >= 2 ? 0.6 : 1))) : 0;
   const qualityCap = Math.round(weeklyMileage * (phase === 'Taper' ? 0.15 : 0.22));
   const qualityTotal = intervalDistance + tempoDistance;
-  // add quality total
   if (qualityTotal > qualityCap) {
     const scale = qualityCap / qualityTotal;
     intervalDistance = Math.max(2, Math.round(intervalDistance * scale));
     tempoDistance = Math.max(3, Math.round(tempoDistance * scale));
   }
-  // add easy mileage
+
   const easyMileage = Math.max(0, weeklyMileage - intervalDistance - tempoDistance);
-  // add long run distance
-  const longRunDistance = Math.min(Math.max(6, Math.round(easyMileage * 0.45)), easyMileage);
+  const stridesDistance = qualitySessions >= 2
+    ? 0
+    : Math.min(Math.max(3, Math.round(easyMileage * 0.2)), easyMileage);
+  let remainingEasyForLongRun = Math.max(0, easyMileage - stridesDistance);
+  const longRunDistance = Math.min(Math.max(6, Math.round(remainingEasyForLongRun * 0.45)), remainingEasyForLongRun);
+  remainingEasyForLongRun = Math.max(0, remainingEasyForLongRun - longRunDistance);
+  const easySupportMileage = remainingEasyForLongRun;
   let remainingEasy = Math.max(0, easyMileage - longRunDistance);
+  remainingEasy = Math.max(0, remainingEasy - stridesDistance);
   const wednesdayDistance = remainingEasy > 0
-    ? Math.min(Math.max(3, Math.round(easyMileage * 0.2)), remainingEasy)
+    ? Math.min(Math.max(3, Math.round(easySupportMileage * 0.35)), remainingEasy)
     : 0;
   remainingEasy = Math.max(0, remainingEasy - wednesdayDistance);
   const sundayDistance = remainingEasy > 0
-    ? Math.min(Math.max(3, Math.round(easyMileage * 0.2)), remainingEasy)
+    ? Math.min(Math.max(3, Math.round(easySupportMileage * 0.35)), remainingEasy)
     : 0;
   remainingEasy = Math.max(0, remainingEasy - sundayDistance);
   const fridayOptional = Math.max(0, Math.round(remainingEasy));
@@ -111,10 +132,10 @@ function generateWeeklyPlan(
     day.description = 'Rest day - adjusted to match your selected weekly frequency';
     day.pace = undefined;
     day.distance = undefined;
+    day.distanceKm = undefined;
     day.dayType = 'rest';
   };
 
-  // add training days
   const days: TrainingDay[] = [
     {
       day: 'Monday',
@@ -127,9 +148,10 @@ function generateWeeklyPlan(
       workout: qualitySessions >= 2 ? 'Interval Training' : 'Strides + Drills',
       description: qualitySessions >= 2
         ? `${Math.min(6 + Math.floor(progress * 4), 10)}x400m at ${getIntervalPace(currentWeekPace)} with 90s recovery (quality capped to ~20% of mileage)`
-        : '3-4 km easy Zone 2 with 6-8x20s relaxed strides to build mechanics (keeps base weeks to one quality day)',
+        : `${formatDistance(stridesDistance)} easy Zone 2 with 6-8x20s relaxed strides to build mechanics (keeps base weeks to one quality day)`,
       pace: qualitySessions >= 2 ? getIntervalPace(currentWeekPace) : getEasyPace(currentWeekPace),
-      distance: qualitySessions >= 2 ? `${intervalDistance} km` : '3-4 km easy + strides',
+      distance: qualitySessions >= 2 ? formatDistance(intervalDistance) : `${formatDistance(stridesDistance)} easy + strides`,
+      distanceKm: qualitySessions >= 2 ? intervalDistance : stridesDistance,
       dayType: qualitySessions >= 2 ? 'quality' : 'easy',
     },
     {
@@ -137,7 +159,8 @@ function generateWeeklyPlan(
       workout: 'Zone 2 Easy Run',
       description: `Conversational pace run at ${getEasyPace(currentWeekPace)} (part of the 80% easy volume)`,
       pace: getEasyPace(currentWeekPace),
-      distance: wednesdayDistance > 0 ? `${wednesdayDistance} km` : 'Optional rest',
+      distance: wednesdayDistance > 0 ? formatDistance(wednesdayDistance) : 'Optional rest',
+      distanceKm: wednesdayDistance > 0 ? wednesdayDistance : undefined,
       dayType: wednesdayDistance > 0 ? 'easy' : 'rest',
     },
     {
@@ -147,7 +170,8 @@ function generateWeeklyPlan(
         ? `Sustained effort at ${getTempoPace(currentWeekPace)} (kept within weekly quality budget)`
         : `Another easy aerobic day at ${getEasyPace(currentWeekPace)} to prioritize base building`,
       pace: qualitySessions >= 1 ? getTempoPace(currentWeekPace) : getEasyPace(currentWeekPace),
-      distance: qualitySessions >= 1 ? `${tempoDistance} km total` : `${Math.max(4, Math.round(weeklyMileage * 0.2))} km`,
+      distance: qualitySessions >= 1 ? `${formatDistance(tempoDistance)} total` : formatDistance(Math.max(4, Math.round(weeklyMileage * 0.2))),
+      distanceKm: qualitySessions >= 1 ? tempoDistance : Math.max(4, Math.round(weeklyMileage * 0.2)),
       dayType: qualitySessions >= 1 ? 'quality' : 'easy',
     },
     {
@@ -155,7 +179,8 @@ function generateWeeklyPlan(
       workout: 'Rest or Easy Run',
       description: 'Optional short Zone 1-2 recovery shuffle or complete rest',
       pace: getEasyPace(currentWeekPace),
-      distance: fridayOptional > 0 ? `${fridayOptional} km (optional)` : 'Rest',
+      distance: fridayOptional > 0 ? `${formatDistance(fridayOptional)} (optional)` : 'Rest',
+      distanceKm: fridayOptional > 0 ? fridayOptional : undefined,
       dayType: fridayOptional > 0 ? 'easy' : 'rest',
     },
     {
@@ -163,7 +188,8 @@ function generateWeeklyPlan(
       workout: 'Long Zone 2 Run',
       description: `Build endurance at ${getEasyPace(currentWeekPace)} (core of the easy mileage)`,
       pace: getEasyPace(currentWeekPace),
-      distance: `${longRunDistance} km`,
+      distance: formatDistance(longRunDistance),
+      distanceKm: longRunDistance,
       dayType: 'long',
     },
     {
@@ -171,7 +197,8 @@ function generateWeeklyPlan(
       workout: 'Recovery Run',
       description: `Very easy pace at ${formatPace(secondsToPace(currentWeekSeconds + 75))}`,
       pace: formatPace(secondsToPace(currentWeekSeconds + 75)),
-      distance: sundayDistance > 0 ? `${sundayDistance} km` : 'Rest',
+      distance: sundayDistance > 0 ? formatDistance(sundayDistance) : 'Rest',
+      distanceKm: sundayDistance > 0 ? sundayDistance : undefined,
       dayType: sundayDistance > 0 ? 'recovery' : 'rest',
     },
   ];
@@ -183,7 +210,8 @@ function generateWeeklyPlan(
       workout: 'Pre-Race Shakeout',
       description: 'Short, easy 2-3km jog with a few strides',
       pace: getEasyPace(targetPace),
-      distance: '2-3 km',
+      distance: '3 km',
+      distanceKm: 3,
       dayType: 'easy',
     };
     days[6] = {
@@ -191,12 +219,13 @@ function generateWeeklyPlan(
       workout: `RACE DAY - ${info.name}`,
       description: `Target pace: ${formatPace(targetPace)} - Go get your PR!`,
       pace: formatPace(targetPace),
-      distance: `${info.km} km`,
+      distance: formatDistance(info.km),
+      distanceKm: info.km,
       dayType: 'quality',
     };
   }
 
-  // Trim to users available training days (prioritize keeping 
+  // Trim to the user's available training days while preserving key workouts.
   const removalPriority = weekNum === totalWeeks
     ? ['Wednesday', 'Friday', 'Tuesday', 'Saturday', 'Thursday']
     : ['Friday', 'Sunday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday'];
@@ -205,16 +234,14 @@ function generateWeeklyPlan(
     if (weekNum === totalWeeks && dayName === 'Sunday') continue; 
     downgradeToRest(dayName);
   }
-  //return
   return {
     week: weekNum,
     phase,
     days,
-    totalMileage: `${weeklyMileage} km`,
+    totalMileage: formatMileage(scheduledMileage(days)),
   };
 }
 
-//generate training plan
 export function generateTrainingPlan(
   distance: RaceDistance,
   currentPace: Pace,
@@ -229,7 +256,7 @@ export function generateTrainingPlan(
   for (let i = 1; i <= info.weeks; i++) {
     weeks.push(generateWeeklyPlan(i, info.weeks, distance, normalizedCurrentPace, normalizedTargetPace, trainingDays));
   }
-// ADD PACE IMPROVEMENTS
+
   const paceImprovement = paceToSeconds(normalizedCurrentPace) - paceToSeconds(normalizedTargetPace);
   const timeImprovement = Math.round((paceImprovement * info.km) / 60);
   const improvementText = timeImprovement > 0
@@ -237,7 +264,14 @@ export function generateTrainingPlan(
     : timeImprovement < 0
       ? `That would add roughly ${Math.abs(timeImprovement)} minutes to your ${info.name} time - double-check that goal if it's unintended.`
       : `This keeps you steady at your current ${info.name} pace.`;
-  const distributionNote = 'Plan targets ~80% easy/Zone 2 mileage with a controlled quality block (tempo + intervals) each week.';
+  const hasIntervals = weeks.some((week) => week.days.some((day) => day.workout === 'Interval Training' && day.dayType !== 'rest'));
+  const hasTempo = weeks.some((week) => week.days.some((day) => day.workout === 'Tempo / Threshold Run' && day.dayType !== 'rest'));
+  const qualityWork = hasIntervals && hasTempo
+    ? 'tempo and interval work'
+    : hasTempo
+      ? 'tempo work'
+      : 'strides and easy aerobic work';
+  const distributionNote = `Plan targets ~80% easy/Zone 2 mileage with controlled ${qualityWork} adjusted to your available training days.`;
 
   return {
     distance,
