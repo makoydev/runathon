@@ -26,6 +26,8 @@ export interface TrainingPlan {
   distance: RaceDistance;
   currentPace: Pace;
   targetPace: Pace;
+  currentWeeklyMileage?: number;
+  longestRecentRun?: number;
   trainingDays: number;
   weeks: TrainingWeek[];
   summary: string;

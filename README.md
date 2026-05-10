@@ -6,6 +6,7 @@ A simple web app for generating personalized running training plans based on you
 
 - **Race Distance Selection**: Choose from 5K, 10K, Half Marathon, or Full Marathon
 - **Pace Configuration**: Input your current pace and target pace (per kilometer)
+- **Current Training Load**: Add weekly mileage and longest recent run so plans start from your actual baseline
 - **Personalized Plans**: Generate week-by-week training schedules tailored to your goals
 - **Training Phases**: Plans include Base Building, Build Phase, Peak Training, and Taper phases
 - **Workout Variety**: Each week includes intervals, tempo runs, easy runs, long runs, and recovery days
@@ -50,6 +51,7 @@ npm run test:coverage
 src/
 ├── components/
 │   ├── DistanceSelector.tsx    # Race distance selection UI
+│   ├── CurrentLoadInputs.tsx   # Current weekly mileage and long-run inputs
 │   ├── PaceInput.tsx           # Pace input component
 │   ├── TrainingDaysSelector.tsx # Training days per week selector
 │   └── TrainingPlanDisplay.tsx # Plan visualization
@@ -68,19 +70,22 @@ src/
 1. Select your target race distance (5K, 10K, Half Marathon, or Marathon)
 2. Enter your current pace per kilometer
 3. Enter your target race pace per kilometer
-4. Click "Generate Training Plan" to create your personalized schedule
+4. Enter your current weekly mileage and longest recent run
+5. Click "Generate Training Plan" to create your personalized schedule
 
 The app generates a multi-week plan with:
 - Progressive pace improvements throughout the training cycle
 - Varied workout types (intervals, tempo, easy, long runs)
 - Appropriate taper period before race day
 - Estimated time improvements based on your pace goals
+- Early mileage and long-run progression shaped by your current training load
 
 ## Implementation Notes
 
 - Weekly mileage is calculated from the workouts that remain after the selected training-days-per-week adjustment. Rest-day trimming happens before totals are displayed.
 - Each scheduled workout stores a numeric `distanceKm` value alongside its display text, so tests and summaries do not need to parse UI strings.
 - Pace inputs are controlled by app state. Clearing a pace field commits `0`, preventing hidden stale values from being used when generating a plan.
+- Current weekly mileage caps early week-to-week growth, and longest recent run caps early long-run growth.
 - Summary copy is generated from the actual workout types in the plan, so lower-frequency plans do not claim interval sessions when those sessions have been removed.
 
 ## Quality Checks

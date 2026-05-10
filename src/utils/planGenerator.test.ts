@@ -36,11 +36,39 @@ describe('generateTrainingPlan', () => {
     })
 
     it('stores input parameters in the plan', () => {
-      const plan = generateTrainingPlan('5k', defaultCurrentPace, defaultTargetPace, 4)
+      const plan = generateTrainingPlan('5k', defaultCurrentPace, defaultTargetPace, 4, 24, 8)
       expect(plan.distance).toBe('5k')
       expect(plan.currentPace).toEqual(defaultCurrentPace)
       expect(plan.targetPace).toEqual(defaultTargetPace)
       expect(plan.trainingDays).toBe(4)
+      expect(plan.currentWeeklyMileage).toBe(24)
+      expect(plan.longestRecentRun).toBe(8)
+    })
+  })
+
+  describe('current training load', () => {
+    const parseMileage = (mileage: string) => Number(mileage.replace(' km', ''))
+
+    it('starts lower when the runner has lower current weekly mileage', () => {
+      const defaultPlan = generateTrainingPlan('half', defaultCurrentPace, defaultTargetPace, 5)
+      const lowerLoadPlan = generateTrainingPlan('half', defaultCurrentPace, defaultTargetPace, 5, 15, 5)
+
+      expect(parseMileage(lowerLoadPlan.weeks[0].totalMileage)).toBeLessThan(parseMileage(defaultPlan.weeks[0].totalMileage))
+    })
+
+    it('uses longest recent run to cap early long-run growth', () => {
+      const plan = generateTrainingPlan('full', defaultCurrentPace, defaultTargetPace, 5, 32, 8)
+      const firstLongRun = plan.weeks[0].days.find((day) => day.day === 'Saturday')
+
+      expect(firstLongRun?.dayType).toBe('long')
+      expect(firstLongRun?.distanceKm).toBeLessThanOrEqual(9)
+    })
+
+    it('includes training load assumptions in the summary', () => {
+      const plan = generateTrainingPlan('10k', defaultCurrentPace, defaultTargetPace, 5, 30, 12)
+
+      expect(plan.summary).toContain('30 km/week load')
+      expect(plan.summary).toContain('12 km longest recent run')
     })
   })
 

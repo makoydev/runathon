@@ -3,6 +3,7 @@ import { DistanceSelector } from './components/DistanceSelector';
 import { PaceInput } from './components/PaceInput';
 import { TrainingPlanDisplay } from './components/TrainingPlanDisplay';
 import { TrainingDaysSelector } from './components/TrainingDaysSelector';
+import { CurrentLoadInputs } from './components/CurrentLoadInputs';
 import { generateTrainingPlan } from './utils/planGenerator';
 import type { RaceDistance, Pace, TrainingPlan } from './types';
 
@@ -10,6 +11,8 @@ function App() {
   const [selectedDistance, setSelectedDistance] = useState<RaceDistance | null>(null);
   const [currentPace, setCurrentPace] = useState<Pace>({ minutes: 6, seconds: 0 });
   const [targetPace, setTargetPace] = useState<Pace>({ minutes: 5, seconds: 30 });
+  const [currentWeeklyMileage, setCurrentWeeklyMileage] = useState<number>(25);
+  const [longestRecentRun, setLongestRecentRun] = useState<number>(8);
   const [trainingDays, setTrainingDays] = useState<number>(5);
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
 
@@ -19,12 +22,23 @@ function App() {
   const currentSeconds = currentPace.minutes * 60 + currentPace.seconds;
   const targetSeconds = targetPace.minutes * 60 + targetPace.seconds;
   const targetNotFaster = targetSeconds >= currentSeconds;
+  const hasValidTrainingLoad =
+    currentWeeklyMileage > 0 &&
+    longestRecentRun > 0 &&
+    longestRecentRun <= currentWeeklyMileage;
 
-  const canGenerate = selectedDistance !== null && hasValidPaces;
+  const canGenerate = selectedDistance !== null && hasValidPaces && hasValidTrainingLoad;
 
   const handleGenerate = () => {
-    if (!selectedDistance || !hasValidPaces) return;
-    const newPlan = generateTrainingPlan(selectedDistance, currentPace, targetPace, trainingDays);
+    if (!selectedDistance || !hasValidPaces || !hasValidTrainingLoad) return;
+    const newPlan = generateTrainingPlan(
+      selectedDistance,
+      currentPace,
+      targetPace,
+      trainingDays,
+      currentWeeklyMileage,
+      longestRecentRun
+    );
     setPlan(newPlan);
   };
 
@@ -33,6 +47,8 @@ function App() {
     setSelectedDistance(null);
     setCurrentPace({ minutes: 6, seconds: 0 });
     setTargetPace({ minutes: 5, seconds: 30 });
+    setCurrentWeeklyMileage(25);
+    setLongestRecentRun(8);
     setTrainingDays(5);
   };
 
@@ -75,6 +91,13 @@ function App() {
           />
         </div>
 
+        <CurrentLoadInputs
+          currentWeeklyMileage={currentWeeklyMileage}
+          longestRecentRun={longestRecentRun}
+          onCurrentWeeklyMileageChange={setCurrentWeeklyMileage}
+          onLongestRecentRunChange={setLongestRecentRun}
+        />
+
         <TrainingDaysSelector trainingDays={trainingDays} onChange={setTrainingDays} />
 
         <div className="flex justify-center">
@@ -82,7 +105,7 @@ function App() {
             onClick={handleGenerate}
             disabled={!canGenerate}
             aria-disabled={!canGenerate}
-            aria-label={canGenerate ? 'Generate your personalized training plan' : 'Select a race distance to generate a training plan'}
+            aria-label={canGenerate ? 'Generate your personalized training plan' : 'Complete the required training details to generate a plan'}
             className={`px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-200 ${
               canGenerate
                 ? 'bg-gradient-to-r from-violet-400 to-sky-400 hover:from-violet-500 hover:to-sky-500 text-white shadow-lg hover:shadow-xl hover:scale-105'

@@ -34,6 +34,11 @@ function scheduledMileage(days: TrainingDay[]): number {
   }, 0);
 }
 
+function normalizeDistance(distance: number): number {
+  if (!Number.isFinite(distance)) return 0;
+  return Math.max(0, Math.round(distance * 10) / 10);
+}
+
 function getEasyPace(pace: Pace): string {
   const seconds = paceToSeconds(pace) + 60; // Easy pace is ~60 sec slower
   return formatPace(secondsToPace(seconds));
@@ -55,9 +60,13 @@ function generateWeeklyPlan(
   distance: RaceDistance,
   currentPace: Pace,
   targetPace: Pace,
-  trainingDays: number
+  trainingDays: number,
+  currentWeeklyMileage = 0,
+  longestRecentRun = 0
 ): TrainingWeek {
   const info = DISTANCE_INFO[distance];
+  const normalizedWeeklyMileage = normalizeDistance(currentWeeklyMileage);
+  const normalizedLongestRun = normalizeDistance(longestRecentRun);
   const currentSeconds = paceToSeconds(currentPace);
   const targetSeconds = paceToSeconds(targetPace);
   const progress = weekNum / totalWeeks;
@@ -77,17 +86,24 @@ function generateWeeklyPlan(
     phase = 'Taper';
   }
 
-  // Base mileage calculation based on race distance and week
-  const baseMileage = {
-    '5k': 15 + progress * 10,
-    '10k': 20 + progress * 15,
-    'half': 25 + progress * 20,
-    'full': 30 + progress * 30,
+  const defaultMileage = {
+    '5k': { start: 15, peak: 25 },
+    '10k': { start: 20, peak: 35 },
+    'half': { start: 25, peak: 45 },
+    'full': { start: 30, peak: 60 },
   };
 
-  
+  const minimumFunctionalMileage = trainingDays * 3;
+  const plannedStartMileage = normalizedWeeklyMileage > 0
+    ? Math.max(minimumFunctionalMileage, normalizedWeeklyMileage)
+    : defaultMileage[distance].start;
+  const plannedPeakMileage = Math.max(defaultMileage[distance].peak, plannedStartMileage);
+  const progressiveMileage = plannedStartMileage + (plannedPeakMileage - plannedStartMileage) * progress;
+  const weeklyGrowthCap = normalizedWeeklyMileage > 0
+    ? Math.max(minimumFunctionalMileage, normalizedWeeklyMileage * Math.pow(1.1, weekNum))
+    : progressiveMileage;
   const taperMultiplier = phase === 'Taper' ? 0.6 : 1;
-  const weeklyMileage = Math.round(baseMileage[distance] * taperMultiplier);
+  const weeklyMileage = Math.round(Math.min(progressiveMileage, weeklyGrowthCap) * taperMultiplier);
 
   // Keep roughly 80/20 easy vs. quality (tempo/interval) distribution
   const qualityFraction = phase === 'Taper' ? 0.12 : phase === 'Base Building' ? 0.12 : 0.2;
@@ -109,7 +125,17 @@ function generateWeeklyPlan(
     ? 0
     : Math.min(Math.max(3, Math.round(easyMileage * 0.2)), easyMileage);
   let remainingEasyForLongRun = Math.max(0, easyMileage - stridesDistance);
-  const longRunDistance = Math.min(Math.max(6, Math.round(remainingEasyForLongRun * 0.45)), remainingEasyForLongRun);
+  const defaultLongRunFloor = normalizedLongestRun > 0
+    ? Math.max(3, Math.min(6, Math.ceil(normalizedLongestRun)))
+    : 6;
+  const longRunGrowthCap = normalizedLongestRun > 0
+    ? normalizedLongestRun + weekNum
+    : remainingEasyForLongRun;
+  const longRunDistance = Math.round(Math.min(
+    Math.max(defaultLongRunFloor, Math.round(remainingEasyForLongRun * 0.45)),
+    longRunGrowthCap,
+    remainingEasyForLongRun
+  ));
   remainingEasyForLongRun = Math.max(0, remainingEasyForLongRun - longRunDistance);
   const easySupportMileage = remainingEasyForLongRun;
   let remainingEasy = Math.max(0, easyMileage - longRunDistance);
@@ -246,15 +272,28 @@ export function generateTrainingPlan(
   distance: RaceDistance,
   currentPace: Pace,
   targetPace: Pace,
-  trainingDays: number
+  trainingDays: number,
+  currentWeeklyMileage = 0,
+  longestRecentRun = 0
 ): TrainingPlan {
   const info = DISTANCE_INFO[distance];
   const normalizedCurrentPace = secondsToPace(paceToSeconds(currentPace));
   const normalizedTargetPace = secondsToPace(paceToSeconds(targetPace));
+  const normalizedWeeklyMileage = normalizeDistance(currentWeeklyMileage);
+  const normalizedLongestRun = normalizeDistance(longestRecentRun);
   const weeks: TrainingWeek[] = [];
 
   for (let i = 1; i <= info.weeks; i++) {
-    weeks.push(generateWeeklyPlan(i, info.weeks, distance, normalizedCurrentPace, normalizedTargetPace, trainingDays));
+    weeks.push(generateWeeklyPlan(
+      i,
+      info.weeks,
+      distance,
+      normalizedCurrentPace,
+      normalizedTargetPace,
+      trainingDays,
+      normalizedWeeklyMileage,
+      normalizedLongestRun
+    ));
   }
 
   const paceImprovement = paceToSeconds(normalizedCurrentPace) - paceToSeconds(normalizedTargetPace);
@@ -272,13 +311,18 @@ export function generateTrainingPlan(
       ? 'tempo work'
       : 'strides and easy aerobic work';
   const distributionNote = `Plan targets ~80% easy/Zone 2 mileage with controlled ${qualityWork} adjusted to your available training days.`;
+  const trainingLoadNote = normalizedWeeklyMileage > 0 && normalizedLongestRun > 0
+    ? ` It starts from your current ${formatDistance(normalizedWeeklyMileage)}/week load and ${formatDistance(normalizedLongestRun)} longest recent run.`
+    : '';
 
   return {
     distance,
     currentPace: normalizedCurrentPace,
     targetPace: normalizedTargetPace,
+    currentWeeklyMileage: normalizedWeeklyMileage || undefined,
+    longestRecentRun: normalizedLongestRun || undefined,
     trainingDays,
     weeks,
-    summary: `This ${info.weeks}-week plan will guide you from ${formatPace(normalizedCurrentPace)} to ${formatPace(normalizedTargetPace)} per kilometer on ${trainingDays} days/week. ${improvementText} ${distributionNote}`,
+    summary: `This ${info.weeks}-week plan will guide you from ${formatPace(normalizedCurrentPace)} to ${formatPace(normalizedTargetPace)} per kilometer on ${trainingDays} days/week. ${improvementText} ${distributionNote}${trainingLoadNote}`,
   };
 }

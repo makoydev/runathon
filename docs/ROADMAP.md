@@ -15,11 +15,11 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
   - Why: a 5-day plan should look different for a new runner versus a high-mileage runner.
   - Notes: use this to scale mileage, long-run percentage, and intensity frequency.
 
-- [ ] Add current weekly mileage input.
+- [x] Add current weekly mileage input.
   - Why: race distance and pace are not enough to create a safe progression.
   - Notes: cap weekly increases and warn when the goal requires aggressive volume growth.
 
-- [ ] Add longest recent run input.
+- [x] Add longest recent run input.
   - Why: long-run progression is one of the biggest safety constraints for half and full marathon plans.
   - Notes: use this to set the opening long run and ramp toward race-specific distance.
 
@@ -149,4 +149,3 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
 8. Browser smoke tests and CI.
 9. Shareable links.
 10. Account or third-party integrations.
-
