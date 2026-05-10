@@ -103,31 +103,7 @@ The generated plans follow established running principles:
 
 ## Future Plans
 
-### Phase 2: Enhanced Training Features
-- [ ] Mile/kilometer pace toggle
-- [ ] Export plan as PDF/calendar
-- [ ] Customizable training days per week
-- [ ] Heart rate zone recommendations
-- [ ] Rest week insertion
-
-### Phase 3: User Experience
-- [ ] Save plans to local storage
-- [ ] Dark mode support
-- [ ] Mobile-optimized UI improvements
-- [ ] Print-friendly view
-
-### Phase 4: Advanced Features
-- [ ] User accounts and saved history
-- [ ] Integration with running apps (Strava, Garmin)
-- [ ] Weather-based workout adjustments
-- [ ] Injury prevention tips per workout
-- [ ] Progress tracking and adjustments
-
-### Phase 5: Community & Social
-- [ ] Share plans with friends
-- [ ] Community training groups
-- [ ] Coach review options
-- [ ] Race day countdown
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the prioritized improvement plan. The roadmap focuses first on plan quality and trust, then local-first usability features, progress tracking, interface polish, and later sharing/integration work.
 
 ---
 
