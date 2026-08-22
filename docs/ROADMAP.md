@@ -11,7 +11,7 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
 
 ## Priority 1: Plan Quality And Trust
 
-- [ ] Add experience-level input: beginner, intermediate, advanced.
+- [x] Add experience-level input: beginner, intermediate, advanced.
   - Why: a 5-day plan should look different for a new runner versus a high-mileage runner.
   - Notes: use this to scale mileage, long-run percentage, and intensity frequency.
 
@@ -27,7 +27,7 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
   - Why: the current plan progresses too smoothly and would benefit from periodic reduced-volume weeks.
   - Notes: every 3-4 weeks, reduce total mileage and quality load while preserving routine.
 
-- [ ] Add goal feasibility feedback.
+- [x] Add goal feasibility feedback.
   - Why: users need to know when a target pace or race date looks unrealistic.
   - Notes: classify goals as conservative, moderate, aggressive, or high-risk based on pace delta, timeline, and mileage.
 
