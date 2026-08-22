@@ -4,8 +4,9 @@ import { PaceInput } from './components/PaceInput';
 import { TrainingPlanDisplay } from './components/TrainingPlanDisplay';
 import { TrainingDaysSelector } from './components/TrainingDaysSelector';
 import { CurrentLoadInputs } from './components/CurrentLoadInputs';
+import { ExperienceLevelSelector } from './components/ExperienceLevelSelector';
 import { generateTrainingPlan } from './utils/planGenerator';
-import type { RaceDistance, Pace, TrainingPlan } from './types';
+import type { RaceDistance, Pace, TrainingPlan, ExperienceLevel } from './types';
 
 function App() {
   const [selectedDistance, setSelectedDistance] = useState<RaceDistance | null>(null);
@@ -13,6 +14,7 @@ function App() {
   const [targetPace, setTargetPace] = useState<Pace>({ minutes: 5, seconds: 30 });
   const [currentWeeklyMileage, setCurrentWeeklyMileage] = useState<number>(25);
   const [longestRecentRun, setLongestRecentRun] = useState<number>(8);
+  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('intermediate');
   const [trainingDays, setTrainingDays] = useState<number>(5);
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
 
@@ -37,7 +39,8 @@ function App() {
       targetPace,
       trainingDays,
       currentWeeklyMileage,
-      longestRecentRun
+      longestRecentRun,
+      experienceLevel
     );
     setPlan(newPlan);
   };
@@ -49,6 +52,7 @@ function App() {
     setTargetPace({ minutes: 5, seconds: 30 });
     setCurrentWeeklyMileage(25);
     setLongestRecentRun(8);
+    setExperienceLevel('intermediate');
     setTrainingDays(5);
   };
 
@@ -97,6 +101,8 @@ function App() {
           onCurrentWeeklyMileageChange={setCurrentWeeklyMileage}
           onLongestRecentRunChange={setLongestRecentRun}
         />
+
+        <ExperienceLevelSelector experienceLevel={experienceLevel} onChange={setExperienceLevel} />
 
         <TrainingDaysSelector trainingDays={trainingDays} onChange={setTrainingDays} />
 
