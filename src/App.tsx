@@ -5,7 +5,9 @@ import { TrainingPlanDisplay } from './components/TrainingPlanDisplay';
 import { TrainingDaysSelector } from './components/TrainingDaysSelector';
 import { CurrentLoadInputs } from './components/CurrentLoadInputs';
 import { ExperienceLevelSelector } from './components/ExperienceLevelSelector';
+import { GoalFeasibilityCard } from './components/GoalFeasibilityCard';
 import { generateTrainingPlan } from './utils/planGenerator';
+import { assessGoalFeasibility } from './utils/goalFeasibility';
 import type { RaceDistance, Pace, TrainingPlan, ExperienceLevel } from './types';
 
 function App() {
@@ -30,6 +32,10 @@ function App() {
     longestRecentRun <= currentWeeklyMileage;
 
   const canGenerate = selectedDistance !== null && hasValidPaces && hasValidTrainingLoad;
+
+  const feasibility = canGenerate
+    ? assessGoalFeasibility(selectedDistance, currentPace, targetPace, currentWeeklyMileage, longestRecentRun)
+    : null;
 
   const handleGenerate = () => {
     if (!selectedDistance || !hasValidPaces || !hasValidTrainingLoad) return;
@@ -105,6 +111,8 @@ function App() {
         <ExperienceLevelSelector experienceLevel={experienceLevel} onChange={setExperienceLevel} />
 
         <TrainingDaysSelector trainingDays={trainingDays} onChange={setTrainingDays} />
+
+        {feasibility && <GoalFeasibilityCard feasibility={feasibility} />}
 
         <div className="flex justify-center">
           <button
