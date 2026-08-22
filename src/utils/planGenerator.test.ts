@@ -72,6 +72,55 @@ describe('generateTrainingPlan', () => {
     })
   })
 
+  describe('experience level scaling', () => {
+    const parseMileage = (mileage: string) => Number(mileage.replace(' km', ''))
+    const peakWeekMileage = (plan: ReturnType<typeof generateTrainingPlan>) =>
+      Math.max(...plan.weeks.map((week) => parseMileage(week.totalMileage)))
+
+    it('defaults to intermediate when not provided', () => {
+      const plan = generateTrainingPlan('10k', defaultCurrentPace, defaultTargetPace, 5, 30, 10)
+      expect(plan.experienceLevel).toBe('intermediate')
+    })
+
+    it('stores the selected experience level in the plan', () => {
+      const plan = generateTrainingPlan('10k', defaultCurrentPace, defaultTargetPace, 5, 30, 10, 'beginner')
+      expect(plan.experienceLevel).toBe('beginner')
+    })
+
+    it('gives beginners lower peak mileage than advanced runners', () => {
+      const beginner = generateTrainingPlan('half', defaultCurrentPace, defaultTargetPace, 5, 25, 10, 'beginner')
+      const advanced = generateTrainingPlan('half', defaultCurrentPace, defaultTargetPace, 5, 25, 10, 'advanced')
+
+      expect(peakWeekMileage(beginner)).toBeLessThan(peakWeekMileage(advanced))
+    })
+
+    it('limits beginners to at most one quality session per week', () => {
+      const plan = generateTrainingPlan('half', defaultCurrentPace, defaultTargetPace, 6, 30, 12, 'beginner')
+
+      plan.weeks.slice(0, -1).forEach((week) => {
+        const qualityDays = week.days.filter((day) => day.dayType === 'quality').length
+        expect(qualityDays).toBeLessThanOrEqual(1)
+      })
+    })
+
+    it('grows the beginner long run more slowly than the advanced long run', () => {
+      const beginner = generateTrainingPlan('full', defaultCurrentPace, defaultTargetPace, 5, 40, 12, 'beginner')
+      const advanced = generateTrainingPlan('full', defaultCurrentPace, defaultTargetPace, 5, 40, 12, 'advanced')
+
+      const longRunAt = (plan: typeof beginner, weekIndex: number) =>
+        plan.weeks[weekIndex].days.find((day) => day.dayType === 'long')?.distanceKm ?? 0
+
+      // Mid-plan, before the taper flattens everything out.
+      expect(longRunAt(beginner, 7)).toBeLessThanOrEqual(longRunAt(advanced, 7))
+      expect(longRunAt(beginner, 7)).toBeLessThanOrEqual(12 + 8 * 0.7 + 1)
+    })
+
+    it('mentions the experience level in the summary', () => {
+      const plan = generateTrainingPlan('10k', defaultCurrentPace, defaultTargetPace, 5, 30, 10, 'advanced')
+      expect(plan.summary).toContain('advanced runner')
+    })
+  })
+
   describe('training phases', () => {
     it('assigns Base Building phase to early weeks', () => {
       const plan = generateTrainingPlan('full', defaultCurrentPace, defaultTargetPace, defaultTrainingDays)

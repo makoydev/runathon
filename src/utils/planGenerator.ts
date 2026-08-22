@@ -1,5 +1,18 @@
-import type { RaceDistance, Pace, TrainingPlan, TrainingWeek, TrainingDay } from '../types';
-import { DISTANCE_INFO } from '../types';
+import type { RaceDistance, Pace, TrainingPlan, TrainingWeek, TrainingDay, ExperienceLevel } from '../types';
+import { DISTANCE_INFO, EXPERIENCE_INFO } from '../types';
+
+// Scaling knobs per experience level: how hard the plan is allowed to push
+// volume growth, long-run progression, and weekly quality frequency.
+const EXPERIENCE_CONFIG: Record<ExperienceLevel, {
+  peakMileageMultiplier: number;
+  weeklyGrowthRate: number;
+  longRunGrowthPerWeek: number;
+  maxQualitySessions: number;
+}> = {
+  beginner: { peakMileageMultiplier: 0.8, weeklyGrowthRate: 1.08, longRunGrowthPerWeek: 0.7, maxQualitySessions: 1 },
+  intermediate: { peakMileageMultiplier: 1, weeklyGrowthRate: 1.1, longRunGrowthPerWeek: 1, maxQualitySessions: 2 },
+  advanced: { peakMileageMultiplier: 1.1, weeklyGrowthRate: 1.12, longRunGrowthPerWeek: 1.3, maxQualitySessions: 2 },
+};
 
 function paceToSeconds(pace: Pace): number {
   return Math.max(0, pace.minutes * 60 + pace.seconds);
@@ -62,9 +75,11 @@ function generateWeeklyPlan(
   targetPace: Pace,
   trainingDays: number,
   currentWeeklyMileage = 0,
-  longestRecentRun = 0
+  longestRecentRun = 0,
+  experienceLevel: ExperienceLevel = 'intermediate'
 ): TrainingWeek {
   const info = DISTANCE_INFO[distance];
+  const experience = EXPERIENCE_CONFIG[experienceLevel];
   const normalizedWeeklyMileage = normalizeDistance(currentWeeklyMileage);
   const normalizedLongestRun = normalizeDistance(longestRecentRun);
   const currentSeconds = paceToSeconds(currentPace);
@@ -97,10 +112,13 @@ function generateWeeklyPlan(
   const plannedStartMileage = normalizedWeeklyMileage > 0
     ? Math.max(minimumFunctionalMileage, normalizedWeeklyMileage)
     : defaultMileage[distance].start;
-  const plannedPeakMileage = Math.max(defaultMileage[distance].peak, plannedStartMileage);
+  const plannedPeakMileage = Math.max(
+    Math.round(defaultMileage[distance].peak * experience.peakMileageMultiplier),
+    plannedStartMileage
+  );
   const progressiveMileage = plannedStartMileage + (plannedPeakMileage - plannedStartMileage) * progress;
   const weeklyGrowthCap = normalizedWeeklyMileage > 0
-    ? Math.max(minimumFunctionalMileage, normalizedWeeklyMileage * Math.pow(1.1, weekNum))
+    ? Math.max(minimumFunctionalMileage, normalizedWeeklyMileage * Math.pow(experience.weeklyGrowthRate, weekNum))
     : progressiveMileage;
   const taperMultiplier = phase === 'Taper' ? 0.6 : 1;
   const weeklyMileage = Math.round(Math.min(progressiveMileage, weeklyGrowthCap) * taperMultiplier);
@@ -108,7 +126,8 @@ function generateWeeklyPlan(
   // Keep roughly 80/20 easy vs. quality (tempo/interval) distribution
   const qualityFraction = phase === 'Taper' ? 0.12 : phase === 'Base Building' ? 0.12 : 0.2;
   const plannedQualitySessions = phase === 'Base Building' ? 1 : phase === 'Taper' ? 1 : 2;
-  const qualitySessions = trainingDays >= 5 ? plannedQualitySessions : trainingDays >= 4 ? Math.min(plannedQualitySessions, 2) : Math.min(plannedQualitySessions, 1);
+  const availabilityQualitySessions = trainingDays >= 5 ? plannedQualitySessions : trainingDays >= 4 ? Math.min(plannedQualitySessions, 2) : Math.min(plannedQualitySessions, 1);
+  const qualitySessions = Math.min(availabilityQualitySessions, experience.maxQualitySessions);
   const targetQuality = weeklyMileage * qualityFraction;
   let intervalDistance = qualitySessions >= 2 ? Math.max(3, Math.round(targetQuality * 0.4)) : 0;
   let tempoDistance = qualitySessions >= 1 ? Math.max(3, Math.round(targetQuality * (qualitySessions >= 2 ? 0.6 : 1))) : 0;
@@ -129,7 +148,7 @@ function generateWeeklyPlan(
     ? Math.max(3, Math.min(6, Math.ceil(normalizedLongestRun)))
     : 6;
   const longRunGrowthCap = normalizedLongestRun > 0
-    ? normalizedLongestRun + weekNum
+    ? normalizedLongestRun + weekNum * experience.longRunGrowthPerWeek
     : remainingEasyForLongRun;
   const longRunDistance = Math.round(Math.min(
     Math.max(defaultLongRunFloor, Math.round(remainingEasyForLongRun * 0.45)),
@@ -274,7 +293,8 @@ export function generateTrainingPlan(
   targetPace: Pace,
   trainingDays: number,
   currentWeeklyMileage = 0,
-  longestRecentRun = 0
+  longestRecentRun = 0,
+  experienceLevel: ExperienceLevel = 'intermediate'
 ): TrainingPlan {
   const info = DISTANCE_INFO[distance];
   const normalizedCurrentPace = secondsToPace(paceToSeconds(currentPace));
@@ -292,7 +312,8 @@ export function generateTrainingPlan(
       normalizedTargetPace,
       trainingDays,
       normalizedWeeklyMileage,
-      normalizedLongestRun
+      normalizedLongestRun,
+      experienceLevel
     ));
   }
 
@@ -314,6 +335,7 @@ export function generateTrainingPlan(
   const trainingLoadNote = normalizedWeeklyMileage > 0 && normalizedLongestRun > 0
     ? ` It starts from your current ${formatDistance(normalizedWeeklyMileage)}/week load and ${formatDistance(normalizedLongestRun)} longest recent run.`
     : '';
+  const experienceNote = ` Volume and intensity are scaled for a ${EXPERIENCE_INFO[experienceLevel].name.toLowerCase()} runner.`;
 
   return {
     distance,
@@ -321,8 +343,9 @@ export function generateTrainingPlan(
     targetPace: normalizedTargetPace,
     currentWeeklyMileage: normalizedWeeklyMileage || undefined,
     longestRecentRun: normalizedLongestRun || undefined,
+    experienceLevel,
     trainingDays,
     weeks,
-    summary: `This ${info.weeks}-week plan will guide you from ${formatPace(normalizedCurrentPace)} to ${formatPace(normalizedTargetPace)} per kilometer on ${trainingDays} days/week. ${improvementText} ${distributionNote}${trainingLoadNote}`,
+    summary: `This ${info.weeks}-week plan will guide you from ${formatPace(normalizedCurrentPace)} to ${formatPace(normalizedTargetPace)} per kilometer on ${trainingDays} days/week. ${improvementText} ${distributionNote}${trainingLoadNote}${experienceNote}`,
   };
 }
