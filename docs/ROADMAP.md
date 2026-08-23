@@ -23,7 +23,7 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
   - Why: long-run progression is one of the biggest safety constraints for half and full marathon plans.
   - Notes: use this to set the opening long run and ramp toward race-specific distance.
 
-- [ ] Add cutback/rest weeks.
+- [x] Add cutback/rest weeks.
   - Why: the current plan progresses too smoothly and would benefit from periodic reduced-volume weeks.
   - Notes: every 3-4 weeks, reduce total mileage and quality load while preserving routine.
 
@@ -31,7 +31,7 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
   - Why: users need to know when a target pace or race date looks unrealistic.
   - Notes: classify goals as conservative, moderate, aggressive, or high-risk based on pace delta, timeline, and mileage.
 
-- [ ] Improve workout descriptions with warmup/cooldown detail.
+- [x] Improve workout descriptions with warmup/cooldown detail.
   - Why: "5 km tempo" is less actionable than explaining warmup, work segment, and cooldown.
   - Notes: keep `distanceKm` as the source of truth and split display text into workout sections if needed.
 
