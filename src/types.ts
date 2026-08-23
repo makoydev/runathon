@@ -20,6 +20,7 @@ export interface TrainingDay {
 export interface TrainingWeek {
   week: number;
   phase: string;
+  isCutback?: boolean;
   days: TrainingDay[];
   totalMileage: string;
 }

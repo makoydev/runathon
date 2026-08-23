@@ -108,6 +108,10 @@ function generateWeeklyPlan(
     'full': { start: 30, peak: 60 },
   };
 
+  // Every 4th week is a cutback: reduced volume and quality so the body
+  // absorbs training, except during the taper (already reduced) and race week.
+  const isCutback = weekNum % 4 === 0 && phase !== 'Taper' && weekNum !== totalWeeks;
+
   const minimumFunctionalMileage = trainingDays * 3;
   const plannedStartMileage = normalizedWeeklyMileage > 0
     ? Math.max(minimumFunctionalMileage, normalizedWeeklyMileage)
@@ -121,13 +125,14 @@ function generateWeeklyPlan(
     ? Math.max(minimumFunctionalMileage, normalizedWeeklyMileage * Math.pow(experience.weeklyGrowthRate, weekNum))
     : progressiveMileage;
   const taperMultiplier = phase === 'Taper' ? 0.6 : 1;
-  const weeklyMileage = Math.round(Math.min(progressiveMileage, weeklyGrowthCap) * taperMultiplier);
+  const cutbackMultiplier = isCutback ? 0.75 : 1;
+  const weeklyMileage = Math.round(Math.min(progressiveMileage, weeklyGrowthCap) * taperMultiplier * cutbackMultiplier);
 
   // Keep roughly 80/20 easy vs. quality (tempo/interval) distribution
   const qualityFraction = phase === 'Taper' ? 0.12 : phase === 'Base Building' ? 0.12 : 0.2;
   const plannedQualitySessions = phase === 'Base Building' ? 1 : phase === 'Taper' ? 1 : 2;
   const availabilityQualitySessions = trainingDays >= 5 ? plannedQualitySessions : trainingDays >= 4 ? Math.min(plannedQualitySessions, 2) : Math.min(plannedQualitySessions, 1);
-  const qualitySessions = Math.min(availabilityQualitySessions, experience.maxQualitySessions);
+  const qualitySessions = Math.min(availabilityQualitySessions, experience.maxQualitySessions, isCutback ? 1 : Infinity);
   const targetQuality = weeklyMileage * qualityFraction;
   let intervalDistance = qualitySessions >= 2 ? Math.max(3, Math.round(targetQuality * 0.4)) : 0;
   let tempoDistance = qualitySessions >= 1 ? Math.max(3, Math.round(targetQuality * (qualitySessions >= 2 ? 0.6 : 1))) : 0;
@@ -282,6 +287,7 @@ function generateWeeklyPlan(
   return {
     week: weekNum,
     phase,
+    isCutback: isCutback || undefined,
     days,
     totalMileage: formatMileage(scheduledMileage(days)),
   };

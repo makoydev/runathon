@@ -72,6 +72,47 @@ describe('generateTrainingPlan', () => {
     })
   })
 
+  describe('cutback weeks', () => {
+    const parseMileage = (mileage: string) => Number(mileage.replace(' km', ''))
+
+    it('marks every 4th non-taper week as a cutback week', () => {
+      const plan = generateTrainingPlan('full', defaultCurrentPace, defaultTargetPace, 5, 30, 12)
+
+      expect(plan.weeks[3].isCutback).toBe(true)
+      expect(plan.weeks[7].isCutback).toBe(true)
+      expect(plan.weeks[11].isCutback).toBe(true)
+      expect(plan.weeks[0].isCutback).toBeUndefined()
+      expect(plan.weeks[4].isCutback).toBeUndefined()
+    })
+
+    it('does not schedule cutbacks during taper or race week', () => {
+      const plan = generateTrainingPlan('full', defaultCurrentPace, defaultTargetPace, 5, 30, 12)
+
+      // Week 16 is both a multiple of 4 and the race week; taper covers the final weeks.
+      expect(plan.weeks[15].isCutback).toBeUndefined()
+      plan.weeks.filter((week) => week.phase === 'Taper').forEach((week) => {
+        expect(week.isCutback).toBeUndefined()
+      })
+    })
+
+    it('reduces mileage in cutback weeks relative to neighbors', () => {
+      const plan = generateTrainingPlan('full', defaultCurrentPace, defaultTargetPace, 5, 30, 12)
+
+      const cutbackMileage = parseMileage(plan.weeks[3].totalMileage)
+      expect(cutbackMileage).toBeLessThan(parseMileage(plan.weeks[2].totalMileage))
+      expect(cutbackMileage).toBeLessThan(parseMileage(plan.weeks[4].totalMileage))
+    })
+
+    it('limits cutback weeks to at most one quality session', () => {
+      const plan = generateTrainingPlan('full', defaultCurrentPace, defaultTargetPace, 6, 40, 15)
+
+      plan.weeks.filter((week) => week.isCutback).forEach((week) => {
+        const qualityDays = week.days.filter((day) => day.dayType === 'quality').length
+        expect(qualityDays).toBeLessThanOrEqual(1)
+      })
+    })
+  })
+
   describe('experience level scaling', () => {
     const parseMileage = (mileage: string) => Number(mileage.replace(' km', ''))
     const peakWeekMileage = (plan: ReturnType<typeof generateTrainingPlan>) =>
