@@ -23,7 +23,7 @@ function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpand
         onClick={onToggle}
         aria-expanded={isExpanded}
         aria-controls={contentId}
-        aria-label={`Week ${week.week}, ${week.phase}, ${week.totalMileage}. Click to ${isExpanded ? 'collapse' : 'expand'} details.`}
+        aria-label={`Week ${week.week}, ${week.phase}${week.isCutback ? ', cutback week' : ''}, ${week.totalMileage}. Click to ${isExpanded ? 'collapse' : 'expand'} details.`}
         className="w-full p-4 flex items-center justify-between hover:bg-white/50 transition-colors"
       >
         <div className="flex items-center gap-4">
@@ -31,6 +31,14 @@ function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpand
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${phaseColors[week.phase] || 'bg-slate-100 text-slate-700'}`}>
             {week.phase}
           </span>
+          {week.isCutback && (
+            <span
+              className="px-3 py-1 rounded-full text-sm font-medium bg-teal-100 text-teal-700"
+              title="Reduced volume this week so your body absorbs the training"
+            >
+              Cutback
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-slate-500">{week.totalMileage}</span>
