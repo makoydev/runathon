@@ -197,7 +197,7 @@ function generateWeeklyPlan(
       day: 'Tuesday',
       workout: qualitySessions >= 2 ? 'Interval Training' : 'Strides + Drills',
       description: qualitySessions >= 2
-        ? `${Math.min(6 + Math.floor(progress * 4), 10)}x400m at ${getIntervalPace(currentWeekPace)} with 90s recovery (quality capped to ~20% of mileage)`
+        ? `10-15 min easy warmup with a few strides, then ${Math.min(6 + Math.floor(progress * 4), 10)}x400m at ${getIntervalPace(currentWeekPace)} with 90s jog recovery, 10 min easy cooldown (all within the session distance)`
         : `${formatDistance(stridesDistance)} easy Zone 2 with 6-8x20s relaxed strides to build mechanics (keeps base weeks to one quality day)`,
       pace: qualitySessions >= 2 ? getIntervalPace(currentWeekPace) : getEasyPace(currentWeekPace),
       distance: qualitySessions >= 2 ? formatDistance(intervalDistance) : `${formatDistance(stridesDistance)} easy + strides`,
@@ -217,7 +217,7 @@ function generateWeeklyPlan(
       day: 'Thursday',
       workout: qualitySessions >= 1 ? 'Tempo / Threshold Run' : 'Zone 2 Easy Run',
       description: qualitySessions >= 1
-        ? `Sustained effort at ${getTempoPace(currentWeekPace)} (kept within weekly quality budget)`
+        ? `10 min easy warmup, sustained effort at ${getTempoPace(currentWeekPace)} for the middle of the run, 10 min easy cooldown (all within the session distance)`
         : `Another easy aerobic day at ${getEasyPace(currentWeekPace)} to prioritize base building`,
       pace: qualitySessions >= 1 ? getTempoPace(currentWeekPace) : getEasyPace(currentWeekPace),
       distance: qualitySessions >= 1 ? `${formatDistance(tempoDistance)} total` : formatDistance(Math.max(4, Math.round(weeklyMileage * 0.2))),
@@ -267,7 +267,7 @@ function generateWeeklyPlan(
     days[6] = {
       day: 'Sunday',
       workout: `RACE DAY - ${info.name}`,
-      description: `Target pace: ${formatPace(targetPace)} - Go get your PR!`,
+      description: `Warm up with 10 min easy jogging and a few strides. Target pace: ${formatPace(targetPace)} - Go get your PR!`,
       pace: formatPace(targetPace),
       distance: formatDistance(info.km),
       distanceKm: info.km,

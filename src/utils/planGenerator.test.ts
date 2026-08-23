@@ -353,6 +353,37 @@ describe('generateTrainingPlan', () => {
     })
   })
 
+  describe('workout descriptions', () => {
+    it('includes warmup and cooldown detail in interval sessions', () => {
+      const plan = generateTrainingPlan('half', defaultCurrentPace, defaultTargetPace, 5, 30, 12)
+      const intervalDay = plan.weeks
+        .flatMap((week) => week.days)
+        .find((day) => day.workout === 'Interval Training' && day.dayType === 'quality')
+
+      expect(intervalDay).toBeDefined()
+      expect(intervalDay?.description).toContain('warmup')
+      expect(intervalDay?.description).toContain('cooldown')
+    })
+
+    it('includes warmup and cooldown detail in tempo sessions', () => {
+      const plan = generateTrainingPlan('half', defaultCurrentPace, defaultTargetPace, 5, 30, 12)
+      const tempoDay = plan.weeks
+        .flatMap((week) => week.days)
+        .find((day) => day.workout === 'Tempo / Threshold Run' && day.dayType === 'quality')
+
+      expect(tempoDay).toBeDefined()
+      expect(tempoDay?.description).toContain('warmup')
+      expect(tempoDay?.description).toContain('cooldown')
+    })
+
+    it('includes a warmup reminder on race day', () => {
+      const plan = generateTrainingPlan('10k', defaultCurrentPace, defaultTargetPace, defaultTrainingDays)
+      const raceDay = plan.weeks[plan.weeks.length - 1].days.find((day) => day.workout.includes('RACE DAY'))
+
+      expect(raceDay?.description).toContain('Warm up')
+    })
+  })
+
   describe('race week', () => {
     it('has race day on Sunday of final week', () => {
       const plan = generateTrainingPlan('5k', defaultCurrentPace, defaultTargetPace, defaultTrainingDays)
