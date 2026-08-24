@@ -1,8 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen, cleanup } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
 import App from './App'
 
 describe('App', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
   it('disables plan generation when clearing the current pace to zero', () => {
     render(<App />)
 
@@ -40,5 +43,44 @@ describe('App', () => {
     expect(screen.getByText('32 km/week')).toBeInTheDocument()
     expect(screen.getByText('Longest Recent Run')).toBeInTheDocument()
     expect(screen.getByText('11 km')).toBeInTheDocument()
+  })
+
+  it('restores the active plan after a reload', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /10K, 10 kilometers/i }))
+    fireEvent.click(screen.getByRole('button', { name: /generate your personalized training plan/i }))
+    expect(screen.getByText('10K Training Plan')).toBeInTheDocument()
+
+    cleanup()
+    render(<App />)
+
+    expect(screen.getByText('10K Training Plan')).toBeInTheDocument()
+  })
+
+  it('lists saved plans on the form screen and reopens them', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /5K, 5 kilometers/i }))
+    fireEvent.click(screen.getByRole('button', { name: /generate your personalized training plan/i }))
+    fireEvent.click(screen.getByRole('button', { name: /create a new training plan/i }))
+
+    expect(screen.getByText('Saved Plans')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /^view 5k plan/i }))
+    expect(screen.getByText('5K Training Plan')).toBeInTheDocument()
+  })
+
+  it('deletes a saved plan from the list', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /5K, 5 kilometers/i }))
+    fireEvent.click(screen.getByRole('button', { name: /generate your personalized training plan/i }))
+    fireEvent.click(screen.getByRole('button', { name: /create a new training plan/i }))
+
+    fireEvent.click(screen.getByRole('button', { name: /^delete 5k plan/i }))
+
+    expect(screen.queryByText('Saved Plans')).not.toBeInTheDocument()
+    expect(localStorage.getItem('runathon.active-plan-id.v1')).toBeNull()
   })
 })

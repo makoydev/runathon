@@ -6,8 +6,11 @@ import { TrainingDaysSelector } from './components/TrainingDaysSelector';
 import { CurrentLoadInputs } from './components/CurrentLoadInputs';
 import { ExperienceLevelSelector } from './components/ExperienceLevelSelector';
 import { GoalFeasibilityCard } from './components/GoalFeasibilityCard';
+import { SavedPlansList } from './components/SavedPlansList';
 import { generateTrainingPlan } from './utils/planGenerator';
 import { assessGoalFeasibility } from './utils/goalFeasibility';
+import { loadSavedPlans, savePlan, deleteSavedPlan, loadActivePlanId, storeActivePlanId } from './utils/planStorage';
+import type { SavedPlan } from './utils/planStorage';
 import type { RaceDistance, Pace, TrainingPlan, ExperienceLevel } from './types';
 
 function App() {
@@ -18,7 +21,12 @@ function App() {
   const [longestRecentRun, setLongestRecentRun] = useState<number>(8);
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('intermediate');
   const [trainingDays, setTrainingDays] = useState<number>(5);
-  const [plan, setPlan] = useState<TrainingPlan | null>(null);
+  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(loadSavedPlans);
+  const [plan, setPlan] = useState<TrainingPlan | null>(() => {
+    const activeId = loadActivePlanId();
+    if (!activeId) return null;
+    return loadSavedPlans().find((saved) => saved.id === activeId)?.plan ?? null;
+  });
 
   const hasValidPaces =
     (currentPace.minutes > 0 || currentPace.seconds > 0) &&
@@ -48,10 +56,26 @@ function App() {
       longestRecentRun,
       experienceLevel
     );
+    const saved = savePlan(newPlan);
+    storeActivePlanId(saved.id);
+    setSavedPlans(loadSavedPlans());
     setPlan(newPlan);
   };
 
+  const handleViewSaved = (saved: SavedPlan) => {
+    storeActivePlanId(saved.id);
+    setPlan(saved.plan);
+  };
+
+  const handleDeleteSaved = (saved: SavedPlan) => {
+    setSavedPlans(deleteSavedPlan(saved.id));
+    if (loadActivePlanId() === saved.id) {
+      storeActivePlanId(null);
+    }
+  };
+
   const handleReset = () => {
+    storeActivePlanId(null);
     setPlan(null);
     setSelectedDistance(null);
     setCurrentPace({ minutes: 6, seconds: 0 });
@@ -141,6 +165,8 @@ function App() {
             Select a race distance to get started
           </p>
         )}
+
+        <SavedPlansList savedPlans={savedPlans} onView={handleViewSaved} onDelete={handleDeleteSaved} />
       </div>
     </main>
   );
