@@ -37,7 +37,7 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
 
 ## Priority 2: Usability And Retention
 
-- [ ] Save generated plans in local storage.
+- [x] Save generated plans in local storage.
   - Why: users should not lose a plan after refreshing or closing the browser.
   - Notes: include create date, race distance, target pace, and training-days setting.
 
