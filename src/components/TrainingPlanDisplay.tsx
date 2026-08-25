@@ -18,7 +18,7 @@ function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpand
   const contentId = `week-${week.week}-content`;
 
   return (
-    <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+    <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-slate-200 overflow-hidden shadow-sm print:break-inside-avoid print:shadow-none">
       <button
         onClick={onToggle}
         aria-expanded={isExpanded}
@@ -43,7 +43,7 @@ function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpand
         <div className="flex items-center gap-4">
           <span className="text-sm text-slate-500">{week.totalMileage}</span>
           <svg
-            className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 text-slate-400 transition-transform print:hidden ${isExpanded ? 'rotate-180' : ''}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -54,8 +54,13 @@ function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpand
         </div>
       </button>
 
-      {isExpanded && (
-        <div id={contentId} role="region" aria-label={`Week ${week.week} schedule`} className="border-t border-slate-100">
+      {/* Collapsed weeks stay in the DOM (hidden) so printing always includes the full schedule. */}
+      <div
+        id={contentId}
+        role="region"
+        aria-label={`Week ${week.week} schedule`}
+        className={`border-t border-slate-100 print:block ${isExpanded ? '' : 'hidden'}`}
+      >
           {week.days.map((day, idx) => (
             <div
               key={day.day}
@@ -88,8 +93,7 @@ function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpand
               </div>
             </div>
           ))}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -118,51 +122,51 @@ export function TrainingPlanDisplay({ plan, onReset }: TrainingPlanDisplayProps)
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-violet-400 via-rose-300 to-sky-400 rounded-2xl p-6 text-white shadow-lg">
+      <div className="bg-gradient-to-r from-violet-400 via-rose-300 to-sky-400 rounded-2xl p-6 text-white shadow-lg print:bg-none print:bg-white print:text-slate-800 print:border print:border-slate-300 print:shadow-none">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 className="text-3xl font-bold">{info.name} Training Plan</h2>
-            <p className="text-white/80 mt-2">{plan.summary}</p>
+            <p className="text-white/80 mt-2 print:text-slate-600">{plan.summary}</p>
           </div>
           <button
             onClick={onReset}
             aria-label="Create a new training plan"
-            className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors font-medium"
+            className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors font-medium print:hidden"
           >
             Create New Plan
           </button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/20">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/20 print:border-slate-200">
           <div>
-            <div className="text-sm text-white/70">Current Pace</div>
+            <div className="text-sm text-white/70 print:text-slate-500">Current Pace</div>
             <div className="text-xl font-bold font-mono">
               {plan.currentPace.minutes}:{plan.currentPace.seconds.toString().padStart(2, '0')}/km
             </div>
           </div>
           <div>
-            <div className="text-sm text-white/70">Target Pace</div>
+            <div className="text-sm text-white/70 print:text-slate-500">Target Pace</div>
             <div className="text-xl font-bold font-mono">
               {plan.targetPace.minutes}:{plan.targetPace.seconds.toString().padStart(2, '0')}/km
             </div>
           </div>
           <div>
-            <div className="text-sm text-white/70">Duration</div>
+            <div className="text-sm text-white/70 print:text-slate-500">Duration</div>
             <div className="text-xl font-bold">{info.weeks} weeks</div>
           </div>
           <div>
-            <div className="text-sm text-white/70">Training Days</div>
+            <div className="text-sm text-white/70 print:text-slate-500">Training Days</div>
             <div className="text-xl font-bold">{plan.trainingDays} days/week</div>
           </div>
           {plan.currentWeeklyMileage && (
             <div>
-              <div className="text-sm text-white/70">Current Load</div>
+              <div className="text-sm text-white/70 print:text-slate-500">Current Load</div>
               <div className="text-xl font-bold">{plan.currentWeeklyMileage} km/week</div>
             </div>
           )}
           {plan.longestRecentRun && (
             <div>
-              <div className="text-sm text-white/70">Longest Recent Run</div>
+              <div className="text-sm text-white/70 print:text-slate-500">Longest Recent Run</div>
               <div className="text-xl font-bold">{plan.longestRecentRun} km</div>
             </div>
           )}
@@ -171,7 +175,14 @@ export function TrainingPlanDisplay({ plan, onReset }: TrainingPlanDisplayProps)
 
       <div className="flex justify-between items-center">
         <h3 className="text-xl font-semibold text-slate-700">Weekly Schedule</h3>
-        <div className="flex gap-2">
+        <div className="flex gap-2 print:hidden">
+          <button
+            onClick={() => window.print()}
+            aria-label="Print this training plan"
+            className="px-3 py-1 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            Print
+          </button>
           <button
             onClick={expandAll}
             aria-label="Expand all weeks"

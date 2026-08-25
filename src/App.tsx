@@ -88,7 +88,7 @@ function App() {
 
   if (plan) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-rose-50 via-sky-50 to-violet-50 py-8 px-4">
+      <main className="min-h-screen bg-gradient-to-br from-rose-50 via-sky-50 to-violet-50 py-8 px-4 print:bg-none print:bg-white">
         <div className="max-w-4xl mx-auto">
           <TrainingPlanDisplay plan={plan} onReset={handleReset} />
         </div>
