@@ -1,5 +1,6 @@
 import type { TrainingPlan, TrainingWeek } from '../types';
 import { DISTANCE_INFO } from '../types';
+import { downloadCalendar } from '../utils/calendarExport';
 import { useState } from 'react';
 
 interface TrainingPlanDisplayProps {
@@ -176,6 +177,14 @@ export function TrainingPlanDisplay({ plan, onReset }: TrainingPlanDisplayProps)
       <div className="flex justify-between items-center">
         <h3 className="text-xl font-semibold text-slate-700">Weekly Schedule</h3>
         <div className="flex gap-2 print:hidden">
+          <button
+            onClick={() => downloadCalendar(plan)}
+            aria-label="Export plan as a calendar file, starting next Monday"
+            title="Downloads an .ics file with the plan starting next Monday"
+            className="px-3 py-1 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            Export .ics
+          </button>
           <button
             onClick={() => window.print()}
             aria-label="Print this training plan"
