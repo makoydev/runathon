@@ -49,11 +49,11 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
   - Why: users may need to move long runs or avoid specific weekdays.
   - Notes: start with preferred long-run day and unavailable weekdays before supporting full drag-and-drop editing.
 
-- [ ] Add print-friendly view.
+- [x] Add print-friendly view.
   - Why: a training plan is often shared, printed, or saved as a PDF.
   - Notes: create a CSS print layout before adding generated PDFs.
 
-- [ ] Add calendar export.
+- [x] Add calendar export.
   - Why: calendar integration makes the plan easier to follow.
   - Notes: generate `.ics` client-side with workout title, distance, pace, and notes.
 
