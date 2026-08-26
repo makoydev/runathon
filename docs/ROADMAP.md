@@ -67,7 +67,7 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
   - Why: users need a lightweight way to mark completed, skipped, or modified workouts.
   - Notes: store locally first; track completion status per week/day.
 
-- [ ] Add weekly adjustment prompts.
+- [x] Add weekly adjustment prompts.
   - Why: plans become more useful when they react to missed workouts or excessive fatigue.
   - Notes: ask simple questions at week boundaries and adjust the next week conservatively.
 
