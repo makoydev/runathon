@@ -25,6 +25,8 @@ export interface TrainingWeek {
   isCutback?: boolean;
   days: TrainingDay[];
   totalMileage: string;
+  /** Set when weekly check-in feedback reduced this week's volume; explains why. */
+  adjustmentNote?: string;
 }
 
 export interface TrainingPlan {
