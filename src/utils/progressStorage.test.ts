@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { dayKey, loadPlanProgress, setWorkoutStatus, clearPlanProgress } from './progressStorage'
+import {
+  dayKey,
+  loadPlanProgress,
+  setWorkoutStatus,
+  clearPlanProgress,
+  loadWeekFeedback,
+  setWeekFeedback,
+} from './progressStorage'
 
 describe('progressStorage', () => {
   beforeEach(() => {
@@ -35,6 +42,35 @@ describe('progressStorage', () => {
 
     expect(loadPlanProgress('plan-a')).toEqual({})
     expect(loadPlanProgress('plan-b')).toEqual({ 'w1-d1': 'completed' })
+  })
+
+  it('stores and reloads week feedback per plan', () => {
+    setWeekFeedback('plan-a', 1, 'tired')
+    setWeekFeedback('plan-a', 2, 'fresh')
+    setWeekFeedback('plan-b', 1, 'normal')
+
+    expect(loadWeekFeedback('plan-a')).toEqual({ 1: 'tired', 2: 'fresh' })
+    expect(loadWeekFeedback('plan-b')).toEqual({ 1: 'normal' })
+    expect(loadWeekFeedback('missing')).toEqual({})
+  })
+
+  it('overwrites feedback when a week is answered again', () => {
+    setWeekFeedback('plan-a', 1, 'tired')
+    const feedback = setWeekFeedback('plan-a', 1, 'normal')
+
+    expect(feedback).toEqual({ 1: 'normal' })
+    expect(loadWeekFeedback('plan-a')).toEqual({ 1: 'normal' })
+  })
+
+  it('clears week feedback along with plan progress', () => {
+    setWorkoutStatus('plan-a', dayKey(1, 1), 'completed')
+    setWeekFeedback('plan-a', 1, 'tired')
+    setWeekFeedback('plan-b', 1, 'fresh')
+
+    clearPlanProgress('plan-a')
+
+    expect(loadWeekFeedback('plan-a')).toEqual({})
+    expect(loadWeekFeedback('plan-b')).toEqual({ 1: 'fresh' })
   })
 
   it('survives corrupted storage', () => {
