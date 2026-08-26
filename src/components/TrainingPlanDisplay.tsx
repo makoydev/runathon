@@ -1,6 +1,7 @@
 import type { TrainingPlan, TrainingWeek } from '../types';
 import { DISTANCE_INFO } from '../types';
 import { downloadCalendar } from '../utils/calendarExport';
+import { formatPaceInUnit, formatDistanceInUnit } from '../utils/units';
 import { useState } from 'react';
 
 interface TrainingPlanDisplayProps {
@@ -102,6 +103,7 @@ function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpand
 export function TrainingPlanDisplay({ plan, onReset }: TrainingPlanDisplayProps) {
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set([1]));
   const info = DISTANCE_INFO[plan.distance];
+  const unit = plan.unit ?? 'km';
 
   const toggleWeek = (week: number) => {
     const newExpanded = new Set(expandedWeeks);
@@ -142,13 +144,13 @@ export function TrainingPlanDisplay({ plan, onReset }: TrainingPlanDisplayProps)
           <div>
             <div className="text-sm text-white/70 print:text-slate-500">Current Pace</div>
             <div className="text-xl font-bold font-mono">
-              {plan.currentPace.minutes}:{plan.currentPace.seconds.toString().padStart(2, '0')}/km
+              {formatPaceInUnit(plan.currentPace, unit)}
             </div>
           </div>
           <div>
             <div className="text-sm text-white/70 print:text-slate-500">Target Pace</div>
             <div className="text-xl font-bold font-mono">
-              {plan.targetPace.minutes}:{plan.targetPace.seconds.toString().padStart(2, '0')}/km
+              {formatPaceInUnit(plan.targetPace, unit)}
             </div>
           </div>
           <div>
@@ -162,13 +164,13 @@ export function TrainingPlanDisplay({ plan, onReset }: TrainingPlanDisplayProps)
           {plan.currentWeeklyMileage && (
             <div>
               <div className="text-sm text-white/70 print:text-slate-500">Current Load</div>
-              <div className="text-xl font-bold">{plan.currentWeeklyMileage} km/week</div>
+              <div className="text-xl font-bold">{formatDistanceInUnit(plan.currentWeeklyMileage, unit)}/week</div>
             </div>
           )}
           {plan.longestRecentRun && (
             <div>
               <div className="text-sm text-white/70 print:text-slate-500">Longest Recent Run</div>
-              <div className="text-xl font-bold">{plan.longestRecentRun} km</div>
+              <div className="text-xl font-bold">{formatDistanceInUnit(plan.longestRecentRun, unit)}</div>
             </div>
           )}
         </div>

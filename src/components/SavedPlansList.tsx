@@ -1,5 +1,6 @@
 import type { SavedPlan } from '../utils/planStorage';
 import { DISTANCE_INFO } from '../types';
+import { formatPaceInUnit } from '../utils/units';
 
 interface SavedPlansListProps {
   savedPlans: SavedPlan[];
@@ -29,7 +30,7 @@ export function SavedPlansList({ savedPlans, onView, onDelete }: SavedPlansListP
         {savedPlans.map((saved) => {
           const { plan } = saved;
           const info = DISTANCE_INFO[plan.distance];
-          const targetPace = `${plan.targetPace.minutes}:${plan.targetPace.seconds.toString().padStart(2, '0')}/km`;
+          const targetPace = formatPaceInUnit(plan.targetPace, plan.unit ?? 'km');
           const label = `${info.name} plan from ${formatCreatedAt(saved.createdAt)}`;
           return (
             <li
