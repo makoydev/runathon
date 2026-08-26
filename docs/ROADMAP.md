@@ -57,7 +57,7 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
   - Why: calendar integration makes the plan easier to follow.
   - Notes: generate `.ics` client-side with workout title, distance, pace, and notes.
 
-- [ ] Add mile/kilometer unit toggle.
+- [x] Add mile/kilometer unit toggle.
   - Why: users in different regions expect different pace units.
   - Notes: store canonical kilometers internally and convert display values at the edge.
 
