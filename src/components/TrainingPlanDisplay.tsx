@@ -2,14 +2,27 @@ import type { TrainingPlan, TrainingWeek } from '../types';
 import { DISTANCE_INFO } from '../types';
 import { downloadCalendar } from '../utils/calendarExport';
 import { formatPaceInUnit, formatDistanceInUnit } from '../utils/units';
+import { loadPlanProgress, setWorkoutStatus, clearPlanProgress, dayKey } from '../utils/progressStorage';
+import type { PlanProgress, WorkoutStatus } from '../utils/progressStorage';
+import { summarizeProgress } from '../utils/progressSummary';
+import { ProgressSummaryCard } from './ProgressSummaryCard';
 import { useState } from 'react';
 
 interface TrainingPlanDisplayProps {
   plan: TrainingPlan;
+  planId: string;
   onReset: () => void;
 }
 
-function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpanded: boolean; onToggle: () => void }) {
+interface WeekCardProps {
+  week: TrainingWeek;
+  isExpanded: boolean;
+  onToggle: () => void;
+  progress: PlanProgress;
+  onStatusToggle: (key: string, status: WorkoutStatus) => void;
+}
+
+function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle }: WeekCardProps) {
   const phaseColors: Record<string, string> = {
     'Base Building': 'bg-emerald-100 text-emerald-700',
     'Build Phase': 'bg-amber-100 text-amber-700',
@@ -63,24 +76,32 @@ function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpand
         aria-label={`Week ${week.week} schedule`}
         className={`border-t border-slate-100 print:block ${isExpanded ? '' : 'hidden'}`}
       >
-          {week.days.map((day, idx) => (
+          {week.days.map((day, idx) => {
+            const isTrackable = Boolean(day.dayType && day.dayType !== 'rest');
+            const status = isTrackable ? progress[dayKey(week.week, idx)] : undefined;
+            return (
             <div
               key={day.day}
               className={`p-4 ${idx !== week.days.length - 1 ? 'border-b border-slate-100' : ''} ${
                 day.workout.includes('RACE DAY') ? 'bg-gradient-to-r from-violet-50 to-rose-50' : ''
-              }`}
+              } ${status === 'skipped' ? 'opacity-60' : ''}`}
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
                     <span className="font-medium text-slate-500 w-24">{day.day}</span>
-                    <span className={`font-semibold ${day.workout.includes('RACE DAY') ? 'text-violet-600 text-lg' : 'text-slate-700'}`}>
+                    <span className={`font-semibold ${day.workout.includes('RACE DAY') ? 'text-violet-600 text-lg' : 'text-slate-700'} ${status === 'skipped' ? 'line-through' : ''}`}>
                       {day.workout}
                     </span>
+                    {status === 'completed' && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 print:hidden">
+                        Done
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-slate-500 mt-1 md:ml-[96px]">{day.description}</p>
                 </div>
-                <div className="flex gap-4 text-sm">
+                <div className="flex items-center gap-4 text-sm">
                   {day.pace && (
                     <span className="px-3 py-1 bg-violet-50 text-violet-600 rounded-lg font-mono">
                       {day.pace}
@@ -91,19 +112,62 @@ function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpand
                       {day.distance}
                     </span>
                   )}
+                  {isTrackable && (
+                    <div className="flex gap-1 print:hidden">
+                      <button
+                        onClick={() => onStatusToggle(dayKey(week.week, idx), 'completed')}
+                        aria-pressed={status === 'completed'}
+                        aria-label={`Mark week ${week.week} ${day.day} ${day.workout} as completed`}
+                        title={status === 'completed' ? 'Unmark as completed' : 'Mark as completed'}
+                        className={`px-2 py-1 rounded-lg transition-colors ${
+                          status === 'completed'
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-emerald-100 hover:text-emerald-700'
+                        }`}
+                      >
+                        ✓
+                      </button>
+                      <button
+                        onClick={() => onStatusToggle(dayKey(week.week, idx), 'skipped')}
+                        aria-pressed={status === 'skipped'}
+                        aria-label={`Mark week ${week.week} ${day.day} ${day.workout} as skipped`}
+                        title={status === 'skipped' ? 'Unmark as skipped' : 'Mark as skipped'}
+                        className={`px-2 py-1 rounded-lg transition-colors ${
+                          status === 'skipped'
+                            ? 'bg-slate-500 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'
+                        }`}
+                      >
+                        ✗
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
       </div>
     </div>
   );
 }
 
-export function TrainingPlanDisplay({ plan, onReset }: TrainingPlanDisplayProps) {
+export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDisplayProps) {
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set([1]));
+  const [progress, setProgress] = useState<PlanProgress>(() => loadPlanProgress(planId));
   const info = DISTANCE_INFO[plan.distance];
   const unit = plan.unit ?? 'km';
+  const summary = summarizeProgress(plan, progress);
+
+  const handleStatusToggle = (key: string, status: WorkoutStatus) => {
+    // Clicking the active status again clears the mark.
+    setProgress(setWorkoutStatus(planId, key, progress[key] === status ? null : status));
+  };
+
+  const handleResetProgress = () => {
+    clearPlanProgress(planId);
+    setProgress({});
+  };
 
   const toggleWeek = (week: number) => {
     const newExpanded = new Set(expandedWeeks);
@@ -176,6 +240,8 @@ export function TrainingPlanDisplay({ plan, onReset }: TrainingPlanDisplayProps)
         </div>
       </div>
 
+      <ProgressSummaryCard summary={summary} unit={unit} onResetProgress={handleResetProgress} />
+
       <div className="flex justify-between items-center">
         <h3 className="text-xl font-semibold text-slate-700">Weekly Schedule</h3>
         <div className="flex gap-2 print:hidden">
@@ -218,6 +284,8 @@ export function TrainingPlanDisplay({ plan, onReset }: TrainingPlanDisplayProps)
             week={week}
             isExpanded={expandedWeeks.has(week.week)}
             onToggle={() => toggleWeek(week.week)}
+            progress={progress}
+            onStatusToggle={handleStatusToggle}
           />
         ))}
       </div>

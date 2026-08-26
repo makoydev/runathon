@@ -86,6 +86,40 @@ describe('App', () => {
     expect(screen.getByText('5K Training Plan')).toBeInTheDocument()
   })
 
+  it('tracks workout completion and shows a progress summary', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /5K, 5 kilometers/i }))
+    fireEvent.click(screen.getByRole('button', { name: /generate your personalized training plan/i }))
+
+    expect(screen.getByText(/mark workouts as done/i)).toBeInTheDocument()
+
+    const completeButtons = screen.getAllByRole('button', { name: /mark week 1 .* as completed/i })
+    fireEvent.click(completeButtons[0])
+
+    expect(screen.getByText('Workouts Completed')).toBeInTheDocument()
+    expect(screen.getByText(/1 of \d+/)).toBeInTheDocument()
+    expect(screen.getByText('100%')).toBeInTheDocument()
+
+    // Clicking the same button again clears the mark.
+    fireEvent.click(screen.getAllByRole('button', { name: /mark week 1 .* as completed/i })[0])
+    expect(screen.getByText(/mark workouts as done/i)).toBeInTheDocument()
+  })
+
+  it('restores tracked progress after a reload', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /5K, 5 kilometers/i }))
+    fireEvent.click(screen.getByRole('button', { name: /generate your personalized training plan/i }))
+    fireEvent.click(screen.getAllByRole('button', { name: /mark week 1 .* as completed/i })[0])
+
+    cleanup()
+    render(<App />)
+
+    expect(screen.getByText('Workouts Completed')).toBeInTheDocument()
+    expect(screen.getByText(/1 of \d+/)).toBeInTheDocument()
+  })
+
   it('deletes a saved plan from the list', () => {
     render(<App />)
 

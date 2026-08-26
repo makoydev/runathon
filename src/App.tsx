@@ -12,8 +12,9 @@ import { generateTrainingPlan } from './utils/planGenerator';
 import { assessGoalFeasibility } from './utils/goalFeasibility';
 import { loadSavedPlans, savePlan, deleteSavedPlan, loadActivePlanId, storeActivePlanId } from './utils/planStorage';
 import type { SavedPlan } from './utils/planStorage';
+import { clearPlanProgress } from './utils/progressStorage';
 import { loadUnit, storeUnit, convertPace, unitToKm, kmToUnit } from './utils/units';
-import type { RaceDistance, Pace, TrainingPlan, ExperienceLevel, DistanceUnit } from './types';
+import type { RaceDistance, Pace, ExperienceLevel, DistanceUnit } from './types';
 
 // Form defaults, expressed in km and converted for display when miles are active.
 const DEFAULTS = {
@@ -39,10 +40,11 @@ function App() {
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('intermediate');
   const [trainingDays, setTrainingDays] = useState<number>(5);
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(loadSavedPlans);
-  const [plan, setPlan] = useState<TrainingPlan | null>(() => {
+  // Progress tracking is keyed by the saved plan's id, so keep the full saved record active.
+  const [activePlan, setActivePlan] = useState<SavedPlan | null>(() => {
     const activeId = loadActivePlanId();
     if (!activeId) return null;
-    return loadSavedPlans().find((saved) => saved.id === activeId)?.plan ?? null;
+    return loadSavedPlans().find((saved) => saved.id === activeId) ?? null;
   });
 
   const hasValidPaces =
@@ -93,16 +95,17 @@ function App() {
     const saved = savePlan(newPlan);
     storeActivePlanId(saved.id);
     setSavedPlans(loadSavedPlans());
-    setPlan(newPlan);
+    setActivePlan(saved);
   };
 
   const handleViewSaved = (saved: SavedPlan) => {
     storeActivePlanId(saved.id);
-    setPlan(saved.plan);
+    setActivePlan(saved);
   };
 
   const handleDeleteSaved = (saved: SavedPlan) => {
     setSavedPlans(deleteSavedPlan(saved.id));
+    clearPlanProgress(saved.id);
     if (loadActivePlanId() === saved.id) {
       storeActivePlanId(null);
     }
@@ -110,7 +113,7 @@ function App() {
 
   const handleReset = () => {
     storeActivePlanId(null);
-    setPlan(null);
+    setActivePlan(null);
     setSelectedDistance(null);
     setCurrentPace(convertPace(DEFAULTS.currentPace, 'km', unit));
     setTargetPace(convertPace(DEFAULTS.targetPace, 'km', unit));
@@ -120,11 +123,17 @@ function App() {
     setTrainingDays(5);
   };
 
-  if (plan) {
+  if (activePlan) {
     return (
       <main className="min-h-screen bg-gradient-to-br from-rose-50 via-sky-50 to-violet-50 py-8 px-4 print:bg-none print:bg-white">
         <div className="max-w-4xl mx-auto">
-          <TrainingPlanDisplay plan={plan} onReset={handleReset} />
+          {/* Keyed by plan id so switching plans reloads that plan's tracked progress. */}
+          <TrainingPlanDisplay
+            key={activePlan.id}
+            plan={activePlan.plan}
+            planId={activePlan.id}
+            onReset={handleReset}
+          />
         </div>
       </main>
     );
