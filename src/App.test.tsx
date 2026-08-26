@@ -45,6 +45,21 @@ describe('App', () => {
     expect(screen.getByText('11 km')).toBeInTheDocument()
   })
 
+  it('converts inputs and generates a mile-based plan when miles are selected', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /use miles/i }))
+
+    // 25 km/week converts to 15.5 mi/week.
+    expect(screen.getByLabelText('Current weekly mileage')).toHaveValue('15.5')
+    expect(screen.getAllByText(/pace per mile/i).length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getByRole('button', { name: /10K, 10 kilometers/i }))
+    fireEvent.click(screen.getByRole('button', { name: /generate your personalized training plan/i }))
+
+    expect(screen.getByText(/per mile/)).toBeInTheDocument()
+  })
+
   it('restores the active plan after a reload', () => {
     render(<App />)
 

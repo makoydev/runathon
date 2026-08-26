@@ -1,6 +1,9 @@
+import type { DistanceUnit } from '../types';
+
 interface CurrentLoadInputsProps {
   currentWeeklyMileage: number;
   longestRecentRun: number;
+  unit?: DistanceUnit;
   onCurrentWeeklyMileageChange: (distance: number) => void;
   onLongestRecentRunChange: (distance: number) => void;
 }
@@ -18,6 +21,7 @@ function parseDistanceInput(value: string, max: number): number {
 export function CurrentLoadInputs({
   currentWeeklyMileage,
   longestRecentRun,
+  unit = 'km',
   onCurrentWeeklyMileageChange,
   onLongestRecentRunChange,
 }: CurrentLoadInputsProps) {
@@ -46,7 +50,7 @@ export function CurrentLoadInputs({
               aria-label="Current weekly mileage"
               aria-describedby="current-weekly-mileage-help"
             />
-            <span className="text-lg text-slate-500 font-medium" aria-hidden="true">km/wk</span>
+            <span className="text-lg text-slate-500 font-medium" aria-hidden="true">{unit}/wk</span>
           </div>
           <span id="current-weekly-mileage-help" className="block text-xs text-slate-400 mt-1">
             Average distance you run in a normal recent week.
@@ -67,7 +71,7 @@ export function CurrentLoadInputs({
               aria-describedby="longest-recent-run-help"
               aria-invalid={longestRunExceedsMileage}
             />
-            <span className="text-lg text-slate-500 font-medium" aria-hidden="true">km</span>
+            <span className="text-lg text-slate-500 font-medium" aria-hidden="true">{unit}</span>
           </div>
           <span id="longest-recent-run-help" className="block text-xs text-slate-400 mt-1">
             Longest single run from the last few weeks.

@@ -7,18 +7,35 @@ import { CurrentLoadInputs } from './components/CurrentLoadInputs';
 import { ExperienceLevelSelector } from './components/ExperienceLevelSelector';
 import { GoalFeasibilityCard } from './components/GoalFeasibilityCard';
 import { SavedPlansList } from './components/SavedPlansList';
+import { UnitToggle } from './components/UnitToggle';
 import { generateTrainingPlan } from './utils/planGenerator';
 import { assessGoalFeasibility } from './utils/goalFeasibility';
 import { loadSavedPlans, savePlan, deleteSavedPlan, loadActivePlanId, storeActivePlanId } from './utils/planStorage';
 import type { SavedPlan } from './utils/planStorage';
-import type { RaceDistance, Pace, TrainingPlan, ExperienceLevel } from './types';
+import { loadUnit, storeUnit, convertPace, unitToKm, kmToUnit } from './utils/units';
+import type { RaceDistance, Pace, TrainingPlan, ExperienceLevel, DistanceUnit } from './types';
+
+// Form defaults, expressed in km and converted for display when miles are active.
+const DEFAULTS = {
+  currentPace: { minutes: 6, seconds: 0 },
+  targetPace: { minutes: 5, seconds: 30 },
+  currentWeeklyMileage: 25,
+  longestRecentRun: 8,
+};
+
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
+}
 
 function App() {
+  const [unit, setUnit] = useState<DistanceUnit>(loadUnit);
   const [selectedDistance, setSelectedDistance] = useState<RaceDistance | null>(null);
-  const [currentPace, setCurrentPace] = useState<Pace>({ minutes: 6, seconds: 0 });
-  const [targetPace, setTargetPace] = useState<Pace>({ minutes: 5, seconds: 30 });
-  const [currentWeeklyMileage, setCurrentWeeklyMileage] = useState<number>(25);
-  const [longestRecentRun, setLongestRecentRun] = useState<number>(8);
+  const [currentPace, setCurrentPace] = useState<Pace>(() => convertPace(DEFAULTS.currentPace, 'km', loadUnit()));
+  const [targetPace, setTargetPace] = useState<Pace>(() => convertPace(DEFAULTS.targetPace, 'km', loadUnit()));
+  const [currentWeeklyMileage, setCurrentWeeklyMileage] = useState<number>(() =>
+    round1(kmToUnit(DEFAULTS.currentWeeklyMileage, loadUnit())));
+  const [longestRecentRun, setLongestRecentRun] = useState<number>(() =>
+    round1(kmToUnit(DEFAULTS.longestRecentRun, loadUnit())));
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('intermediate');
   const [trainingDays, setTrainingDays] = useState<number>(5);
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(loadSavedPlans);
@@ -41,20 +58,37 @@ function App() {
 
   const canGenerate = selectedDistance !== null && hasValidPaces && hasValidTrainingLoad;
 
+  // Inputs are edited in the display unit; convert to canonical km at this boundary.
+  const currentPaceKm = convertPace(currentPace, unit, 'km');
+  const targetPaceKm = convertPace(targetPace, unit, 'km');
+  const weeklyMileageKm = unitToKm(currentWeeklyMileage, unit);
+  const longestRunKm = unitToKm(longestRecentRun, unit);
+
   const feasibility = canGenerate
-    ? assessGoalFeasibility(selectedDistance, currentPace, targetPace, currentWeeklyMileage, longestRecentRun)
+    ? assessGoalFeasibility(selectedDistance, currentPaceKm, targetPaceKm, weeklyMileageKm, longestRunKm, unit)
     : null;
+
+  const handleUnitChange = (nextUnit: DistanceUnit) => {
+    if (nextUnit === unit) return;
+    setCurrentPace(convertPace(currentPace, unit, nextUnit));
+    setTargetPace(convertPace(targetPace, unit, nextUnit));
+    setCurrentWeeklyMileage(round1(kmToUnit(unitToKm(currentWeeklyMileage, unit), nextUnit)));
+    setLongestRecentRun(round1(kmToUnit(unitToKm(longestRecentRun, unit), nextUnit)));
+    setUnit(nextUnit);
+    storeUnit(nextUnit);
+  };
 
   const handleGenerate = () => {
     if (!selectedDistance || !hasValidPaces || !hasValidTrainingLoad) return;
     const newPlan = generateTrainingPlan(
       selectedDistance,
-      currentPace,
-      targetPace,
+      currentPaceKm,
+      targetPaceKm,
       trainingDays,
-      currentWeeklyMileage,
-      longestRecentRun,
-      experienceLevel
+      weeklyMileageKm,
+      longestRunKm,
+      experienceLevel,
+      unit
     );
     const saved = savePlan(newPlan);
     storeActivePlanId(saved.id);
@@ -78,10 +112,10 @@ function App() {
     storeActivePlanId(null);
     setPlan(null);
     setSelectedDistance(null);
-    setCurrentPace({ minutes: 6, seconds: 0 });
-    setTargetPace({ minutes: 5, seconds: 30 });
-    setCurrentWeeklyMileage(25);
-    setLongestRecentRun(8);
+    setCurrentPace(convertPace(DEFAULTS.currentPace, 'km', unit));
+    setTargetPace(convertPace(DEFAULTS.targetPace, 'km', unit));
+    setCurrentWeeklyMileage(round1(kmToUnit(DEFAULTS.currentWeeklyMileage, unit)));
+    setLongestRecentRun(round1(kmToUnit(DEFAULTS.longestRecentRun, unit)));
     setExperienceLevel('intermediate');
     setTrainingDays(5);
   };
@@ -106,6 +140,9 @@ function App() {
           <p className="mt-2 text-lg text-slate-500">
             Generate your personalized running training plan
           </p>
+          <div className="mt-4 flex justify-center">
+            <UnitToggle unit={unit} onChange={handleUnitChange} />
+          </div>
         </header>
 
         <DistanceSelector selected={selectedDistance} onSelect={setSelectedDistance} />
@@ -113,13 +150,13 @@ function App() {
         <div className="grid md:grid-cols-2 gap-6">
           <PaceInput
             label="Current Pace"
-            description="Your current average pace per kilometer"
+            description={`Your current average pace per ${unit === 'mi' ? 'mile' : 'kilometer'}`}
             pace={currentPace}
             onChange={setCurrentPace}
           />
           <PaceInput
             label="Target Pace"
-            description="Your goal pace for race day"
+            description={`Your goal pace per ${unit === 'mi' ? 'mile' : 'kilometer'} for race day`}
             pace={targetPace}
             onChange={setTargetPace}
           />
@@ -128,6 +165,7 @@ function App() {
         <CurrentLoadInputs
           currentWeeklyMileage={currentWeeklyMileage}
           longestRecentRun={longestRecentRun}
+          unit={unit}
           onCurrentWeeklyMileageChange={setCurrentWeeklyMileage}
           onLongestRecentRunChange={setLongestRecentRun}
         />
