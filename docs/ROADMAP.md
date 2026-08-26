@@ -63,7 +63,7 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
 
 ## Priority 3: Progress Tracking
 
-- [ ] Add workout completion tracking.
+- [x] Add workout completion tracking.
   - Why: users need a lightweight way to mark completed, skipped, or modified workouts.
   - Notes: store locally first; track completion status per week/day.
 
@@ -75,7 +75,7 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
   - Why: pace alone misses fatigue, terrain, heat, and recovery status.
   - Notes: record RPE 1-10 and optional notes per workout.
 
-- [ ] Add progress summary.
+- [x] Add progress summary.
   - Why: users should see whether they are following the plan.
   - Notes: show completion rate, mileage completed, longest run completed, and upcoming key sessions.
 
