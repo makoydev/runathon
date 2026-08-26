@@ -47,6 +47,15 @@ describe('assessGoalFeasibility', () => {
     expect(result.reasons.some((reason) => reason.includes('longest recent run'))).toBe(true)
   })
 
+  it('formats reason distances in miles when requested', () => {
+    const result = assessGoalFeasibility('full', pace(6, 0), pace(6, 0), 60, 10, 'mi')
+
+    const longRunReason = result.reasons.find((reason) => reason.includes('longest recent run'))
+    expect(longRunReason).toContain('6.2 mi')
+    expect(longRunReason).toContain('26.2 mi')
+    expect(longRunReason).not.toContain('km')
+  })
+
   it('always returns at least one reason', () => {
     const result = assessGoalFeasibility('5k', pace(6, 0), pace(5, 55), 25, 8)
 

@@ -1,5 +1,6 @@
-import type { RaceDistance, Pace } from '../types';
+import type { RaceDistance, Pace, DistanceUnit } from '../types';
 import { DISTANCE_INFO } from '../types';
+import { formatDistanceInUnit } from './units';
 
 export type FeasibilityRating = 'conservative' | 'moderate' | 'aggressive' | 'high-risk';
 
@@ -34,11 +35,13 @@ export function assessGoalFeasibility(
   currentPace: Pace,
   targetPace: Pace,
   currentWeeklyMileage: number,
-  longestRecentRun: number
+  longestRecentRun: number,
+  unit: DistanceUnit = 'km'
 ): GoalFeasibility {
   const info = DISTANCE_INFO[distance];
   const reasons: string[] = [];
   const ratings: FeasibilityRating[] = [];
+  const fmt = (km: number) => formatDistanceInUnit(km, unit);
 
   // Pace delta vs. timeline: how much improvement each training week must deliver.
   const currentSeconds = paceToSeconds(currentPace);
@@ -70,13 +73,13 @@ export function assessGoalFeasibility(
       ratings.push('conservative');
     } else if (mileageRatio <= 2.5) {
       ratings.push('moderate');
-      reasons.push(`Weekly mileage needs to grow from ${currentWeeklyMileage} km toward ~${TARGET_PEAK_MILEAGE[distance]} km, a manageable but real build.`);
+      reasons.push(`Weekly mileage needs to grow from ${fmt(currentWeeklyMileage)} toward ~${fmt(TARGET_PEAK_MILEAGE[distance])}, a manageable but real build.`);
     } else if (mileageRatio <= 3.5) {
       ratings.push('aggressive');
-      reasons.push(`Weekly mileage must roughly triple from ${currentWeeklyMileage} km toward ~${TARGET_PEAK_MILEAGE[distance]} km, which is a steep build for this timeline.`);
+      reasons.push(`Weekly mileage must roughly triple from ${fmt(currentWeeklyMileage)} toward ~${fmt(TARGET_PEAK_MILEAGE[distance])}, which is a steep build for this timeline.`);
     } else {
       ratings.push('high-risk');
-      reasons.push(`Weekly mileage of ${currentWeeklyMileage} km is far below the ~${TARGET_PEAK_MILEAGE[distance]} km typically needed - the required ramp risks injury.`);
+      reasons.push(`Weekly mileage of ${fmt(currentWeeklyMileage)} is far below the ~${fmt(TARGET_PEAK_MILEAGE[distance])} typically needed - the required ramp risks injury.`);
     }
   }
 
@@ -87,13 +90,13 @@ export function assessGoalFeasibility(
       ratings.push('conservative');
     } else if (longRunRatio <= 2.5) {
       ratings.push('moderate');
-      reasons.push(`Race distance (${info.km} km) is well beyond your longest recent run (${longestRecentRun} km); the long-run progression will matter.`);
+      reasons.push(`Race distance (${fmt(info.km)}) is well beyond your longest recent run (${fmt(longestRecentRun)}); the long-run progression will matter.`);
     } else if (longRunRatio <= 4) {
       ratings.push('aggressive');
-      reasons.push(`Your longest recent run (${longestRecentRun} km) is a small fraction of race distance (${info.km} km), so endurance is the main constraint.`);
+      reasons.push(`Your longest recent run (${fmt(longestRecentRun)}) is a small fraction of race distance (${fmt(info.km)}), so endurance is the main constraint.`);
     } else {
       ratings.push('high-risk');
-      reasons.push(`Your longest recent run (${longestRecentRun} km) is very short compared to the race (${info.km} km) - building that endurance safely may need more weeks than this plan has.`);
+      reasons.push(`Your longest recent run (${fmt(longestRecentRun)}) is very short compared to the race (${fmt(info.km)}) - building that endurance safely may need more weeks than this plan has.`);
     }
   }
 
