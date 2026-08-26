@@ -2,10 +2,19 @@ import type { TrainingPlan, TrainingWeek } from '../types';
 import { DISTANCE_INFO } from '../types';
 import { downloadCalendar } from '../utils/calendarExport';
 import { formatPaceInUnit, formatDistanceInUnit } from '../utils/units';
-import { loadPlanProgress, setWorkoutStatus, clearPlanProgress, dayKey } from '../utils/progressStorage';
-import type { PlanProgress, WorkoutStatus } from '../utils/progressStorage';
+import {
+  loadPlanProgress,
+  setWorkoutStatus,
+  clearPlanProgress,
+  loadWeekFeedback,
+  setWeekFeedback,
+  dayKey,
+} from '../utils/progressStorage';
+import type { PlanProgress, PlanWeekFeedback, WeekFeedback, WorkoutStatus } from '../utils/progressStorage';
 import { summarizeProgress } from '../utils/progressSummary';
+import { applyWeekAdjustments, nextFeedbackWeek } from '../utils/weekAdjustment';
 import { ProgressSummaryCard } from './ProgressSummaryCard';
+import { WeekCheckInCard } from './WeekCheckInCard';
 import { useState } from 'react';
 
 interface TrainingPlanDisplayProps {
@@ -38,7 +47,7 @@ function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle }: Week
         onClick={onToggle}
         aria-expanded={isExpanded}
         aria-controls={contentId}
-        aria-label={`Week ${week.week}, ${week.phase}${week.isCutback ? ', cutback week' : ''}, ${week.totalMileage}. Click to ${isExpanded ? 'collapse' : 'expand'} details.`}
+        aria-label={`Week ${week.week}, ${week.phase}${week.isCutback ? ', cutback week' : ''}${week.adjustmentNote ? ', adjusted' : ''}, ${week.totalMileage}. Click to ${isExpanded ? 'collapse' : 'expand'} details.`}
         className="w-full p-4 flex items-center justify-between hover:bg-white/50 transition-colors"
       >
         <div className="flex items-center gap-4">
@@ -52,6 +61,14 @@ function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle }: Week
               title="Reduced volume this week so your body absorbs the training"
             >
               Cutback
+            </span>
+          )}
+          {week.adjustmentNote && (
+            <span
+              className="px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-700"
+              title={week.adjustmentNote}
+            >
+              Adjusted
             </span>
           )}
         </div>
@@ -76,6 +93,11 @@ function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle }: Week
         aria-label={`Week ${week.week} schedule`}
         className={`border-t border-slate-100 print:block ${isExpanded ? '' : 'hidden'}`}
       >
+          {week.adjustmentNote && (
+            <p className="px-4 py-2 text-sm text-amber-700 bg-amber-50 border-b border-amber-100">
+              {week.adjustmentNote}
+            </p>
+          )}
           {week.days.map((day, idx) => {
             const isTrackable = Boolean(day.dayType && day.dayType !== 'rest');
             const status = isTrackable ? progress[dayKey(week.week, idx)] : undefined;
@@ -155,18 +177,28 @@ function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle }: Week
 export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDisplayProps) {
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set([1]));
   const [progress, setProgress] = useState<PlanProgress>(() => loadPlanProgress(planId));
+  const [feedback, setFeedback] = useState<PlanWeekFeedback>(() => loadWeekFeedback(planId));
   const info = DISTANCE_INFO[plan.distance];
   const unit = plan.unit ?? 'km';
-  const summary = summarizeProgress(plan, progress);
+
+  // The stored plan stays untouched; check-in feedback derives an adjusted view.
+  const effectivePlan = applyWeekAdjustments(plan, feedback, progress);
+  const summary = summarizeProgress(effectivePlan, progress);
+  const checkInWeek = nextFeedbackWeek(effectivePlan, progress, feedback);
 
   const handleStatusToggle = (key: string, status: WorkoutStatus) => {
     // Clicking the active status again clears the mark.
     setProgress(setWorkoutStatus(planId, key, progress[key] === status ? null : status));
   };
 
+  const handleCheckInAnswer = (week: number, answer: WeekFeedback) => {
+    setFeedback(setWeekFeedback(planId, week, answer));
+  };
+
   const handleResetProgress = () => {
     clearPlanProgress(planId);
     setProgress({});
+    setFeedback({});
   };
 
   const toggleWeek = (week: number) => {
@@ -242,11 +274,15 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
 
       <ProgressSummaryCard summary={summary} unit={unit} onResetProgress={handleResetProgress} />
 
+      {checkInWeek !== null && (
+        <WeekCheckInCard week={checkInWeek} onAnswer={(answer) => handleCheckInAnswer(checkInWeek, answer)} />
+      )}
+
       <div className="flex justify-between items-center">
         <h3 className="text-xl font-semibold text-slate-700">Weekly Schedule</h3>
         <div className="flex gap-2 print:hidden">
           <button
-            onClick={() => downloadCalendar(plan)}
+            onClick={() => downloadCalendar(effectivePlan)}
             aria-label="Export plan as a calendar file, starting next Monday"
             title="Downloads an .ics file with the plan starting next Monday"
             className="px-3 py-1 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
@@ -278,7 +314,7 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
       </div>
 
       <div className="space-y-4">
-        {plan.weeks.map((week) => (
+        {effectivePlan.weeks.map((week) => (
           <WeekCard
             key={week.week}
             week={week}

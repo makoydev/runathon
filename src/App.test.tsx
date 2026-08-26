@@ -120,6 +120,42 @@ describe('App', () => {
     expect(screen.getByText(/1 of \d+/)).toBeInTheDocument()
   })
 
+  it('asks for a week check-in after the week is fully marked and adjusts the next week', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /5K, 5 kilometers/i }))
+    fireEvent.click(screen.getByRole('button', { name: /generate your personalized training plan/i }))
+
+    expect(screen.queryByText('Week 1 check-in')).not.toBeInTheDocument()
+
+    screen
+      .getAllByRole('button', { name: /mark week 1 .* as skipped/i })
+      .forEach((button) => fireEvent.click(button))
+
+    expect(screen.getByText('Week 1 check-in')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /week 1 felt: very fatigued/i }))
+
+    // The answer is recorded, the prompt goes away, and week 2 shows as adjusted.
+    expect(screen.queryByText('Week 1 check-in')).not.toBeInTheDocument()
+    expect(screen.getByText('Adjusted')).toBeInTheDocument()
+  })
+
+  it('resetting progress removes adjustments and check-in answers', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /5K, 5 kilometers/i }))
+    fireEvent.click(screen.getByRole('button', { name: /generate your personalized training plan/i }))
+    screen
+      .getAllByRole('button', { name: /mark week 1 .* as skipped/i })
+      .forEach((button) => fireEvent.click(button))
+    fireEvent.click(screen.getByRole('button', { name: /week 1 felt: very fatigued/i }))
+
+    fireEvent.click(screen.getByRole('button', { name: /reset all tracked progress/i }))
+
+    expect(screen.queryByText('Adjusted')).not.toBeInTheDocument()
+    expect(screen.queryByText('Week 1 check-in')).not.toBeInTheDocument()
+  })
+
   it('deletes a saved plan from the list', () => {
     render(<App />)
 
