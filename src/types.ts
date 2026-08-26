@@ -2,6 +2,8 @@ export type RaceDistance = '5k' | '10k' | 'half' | 'full';
 
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 
+export type DistanceUnit = 'km' | 'mi';
+
 export interface Pace {
   minutes: number;
   seconds: number;
@@ -32,6 +34,7 @@ export interface TrainingPlan {
   currentWeeklyMileage?: number;
   longestRecentRun?: number;
   experienceLevel?: ExperienceLevel;
+  unit?: DistanceUnit;
   trainingDays: number;
   weeks: TrainingWeek[];
   summary: string;
