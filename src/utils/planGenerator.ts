@@ -1,5 +1,6 @@
-import type { RaceDistance, Pace, TrainingPlan, TrainingWeek, TrainingDay, ExperienceLevel } from '../types';
+import type { RaceDistance, Pace, TrainingPlan, TrainingWeek, TrainingDay, ExperienceLevel, DistanceUnit } from '../types';
 import { DISTANCE_INFO, EXPERIENCE_INFO } from '../types';
+import { KM_PER_MILE } from './units';
 
 // Scaling knobs per experience level: how hard the plan is allowed to push
 // volume growth, long-run progression, and weekly quality frequency.
@@ -26,18 +27,21 @@ function secondsToPace(totalSeconds: number): Pace {
   };
 }
 
-function formatPace(pace: Pace): string {
-  const normalized = secondsToPace(paceToSeconds(pace));
-  return `${normalized.minutes}:${normalized.seconds.toString().padStart(2, '0')}/km`;
+// All internal math is in km and sec/km; `unit` only affects the display strings.
+function formatPace(pace: Pace, unit: DistanceUnit = 'km'): string {
+  const displaySeconds = unit === 'mi' ? paceToSeconds(pace) * KM_PER_MILE : paceToSeconds(pace);
+  const normalized = secondsToPace(displaySeconds);
+  return `${normalized.minutes}:${normalized.seconds.toString().padStart(2, '0')}/${unit}`;
 }
 
-function formatDistance(distanceKm: number): string {
-  const rounded = Math.round(distanceKm * 10) / 10;
-  return Number.isInteger(rounded) ? `${rounded} km` : `${rounded.toFixed(1)} km`;
+function formatDistance(distanceKm: number, unit: DistanceUnit = 'km'): string {
+  const value = unit === 'mi' ? distanceKm / KM_PER_MILE : distanceKm;
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? `${rounded} ${unit}` : `${rounded.toFixed(1)} ${unit}`;
 }
 
-function formatMileage(distanceKm: number): string {
-  return formatDistance(distanceKm);
+function formatMileage(distanceKm: number, unit: DistanceUnit = 'km'): string {
+  return formatDistance(distanceKm, unit);
 }
 
 function scheduledMileage(days: TrainingDay[]): number {
@@ -52,19 +56,19 @@ function normalizeDistance(distance: number): number {
   return Math.max(0, Math.round(distance * 10) / 10);
 }
 
-function getEasyPace(pace: Pace): string {
+function getEasyPace(pace: Pace, unit: DistanceUnit = 'km'): string {
   const seconds = paceToSeconds(pace) + 60; // Easy pace is ~60 sec slower
-  return formatPace(secondsToPace(seconds));
+  return formatPace(secondsToPace(seconds), unit);
 }
 
-function getTempoPace(pace: Pace): string {
+function getTempoPace(pace: Pace, unit: DistanceUnit = 'km'): string {
   const seconds = paceToSeconds(pace) + 15; // Tempo is ~15 sec slower than race pace
-  return formatPace(secondsToPace(seconds));
+  return formatPace(secondsToPace(seconds), unit);
 }
 
-function getIntervalPace(pace: Pace): string {
+function getIntervalPace(pace: Pace, unit: DistanceUnit = 'km'): string {
   const seconds = paceToSeconds(pace) - 15; // Intervals are ~15 sec faster than race pace
-  return formatPace(secondsToPace(seconds));
+  return formatPace(secondsToPace(seconds), unit);
 }
 
 function generateWeeklyPlan(
@@ -76,7 +80,8 @@ function generateWeeklyPlan(
   trainingDays: number,
   currentWeeklyMileage = 0,
   longestRecentRun = 0,
-  experienceLevel: ExperienceLevel = 'intermediate'
+  experienceLevel: ExperienceLevel = 'intermediate',
+  unit: DistanceUnit = 'km'
 ): TrainingWeek {
   const info = DISTANCE_INFO[distance];
   const experience = EXPERIENCE_CONFIG[experienceLevel];
@@ -88,6 +93,13 @@ function generateWeeklyPlan(
   const interpolatedSeconds = currentSeconds - (currentSeconds - targetSeconds) * progress;
   const currentWeekPace = secondsToPace(interpolatedSeconds);
   const currentWeekSeconds = paceToSeconds(currentWeekPace);
+
+  const fmtDistance = (km: number) => formatDistance(km, unit);
+  const fmtPace = (pace: Pace) => formatPace(pace, unit);
+  const easyPace = getEasyPace(currentWeekPace, unit);
+  const tempoPace = getTempoPace(currentWeekPace, unit);
+  const intervalPace = getIntervalPace(currentWeekPace, unit);
+  const recoveryPace = fmtPace(secondsToPace(currentWeekSeconds + 75));
 
   // Determine training phases
   let phase: string;
@@ -197,19 +209,19 @@ function generateWeeklyPlan(
       day: 'Tuesday',
       workout: qualitySessions >= 2 ? 'Interval Training' : 'Strides + Drills',
       description: qualitySessions >= 2
-        ? `10-15 min easy warmup with a few strides, then ${Math.min(6 + Math.floor(progress * 4), 10)}x400m at ${getIntervalPace(currentWeekPace)} with 90s jog recovery, 10 min easy cooldown (all within the session distance)`
-        : `${formatDistance(stridesDistance)} easy Zone 2 with 6-8x20s relaxed strides to build mechanics (keeps base weeks to one quality day)`,
-      pace: qualitySessions >= 2 ? getIntervalPace(currentWeekPace) : getEasyPace(currentWeekPace),
-      distance: qualitySessions >= 2 ? formatDistance(intervalDistance) : `${formatDistance(stridesDistance)} easy + strides`,
+        ? `10-15 min easy warmup with a few strides, then ${Math.min(6 + Math.floor(progress * 4), 10)}x400m at ${intervalPace} with 90s jog recovery, 10 min easy cooldown (all within the session distance)`
+        : `${fmtDistance(stridesDistance)} easy Zone 2 with 6-8x20s relaxed strides to build mechanics (keeps base weeks to one quality day)`,
+      pace: qualitySessions >= 2 ? intervalPace : easyPace,
+      distance: qualitySessions >= 2 ? fmtDistance(intervalDistance) : `${fmtDistance(stridesDistance)} easy + strides`,
       distanceKm: qualitySessions >= 2 ? intervalDistance : stridesDistance,
       dayType: qualitySessions >= 2 ? 'quality' : 'easy',
     },
     {
       day: 'Wednesday',
       workout: 'Zone 2 Easy Run',
-      description: `Conversational pace run at ${getEasyPace(currentWeekPace)} (part of the 80% easy volume)`,
-      pace: getEasyPace(currentWeekPace),
-      distance: wednesdayDistance > 0 ? formatDistance(wednesdayDistance) : 'Optional rest',
+      description: `Conversational pace run at ${easyPace} (part of the 80% easy volume)`,
+      pace: easyPace,
+      distance: wednesdayDistance > 0 ? fmtDistance(wednesdayDistance) : 'Optional rest',
       distanceKm: wednesdayDistance > 0 ? wednesdayDistance : undefined,
       dayType: wednesdayDistance > 0 ? 'easy' : 'rest',
     },
@@ -217,10 +229,10 @@ function generateWeeklyPlan(
       day: 'Thursday',
       workout: qualitySessions >= 1 ? 'Tempo / Threshold Run' : 'Zone 2 Easy Run',
       description: qualitySessions >= 1
-        ? `10 min easy warmup, sustained effort at ${getTempoPace(currentWeekPace)} for the middle of the run, 10 min easy cooldown (all within the session distance)`
-        : `Another easy aerobic day at ${getEasyPace(currentWeekPace)} to prioritize base building`,
-      pace: qualitySessions >= 1 ? getTempoPace(currentWeekPace) : getEasyPace(currentWeekPace),
-      distance: qualitySessions >= 1 ? `${formatDistance(tempoDistance)} total` : formatDistance(Math.max(4, Math.round(weeklyMileage * 0.2))),
+        ? `10 min easy warmup, sustained effort at ${tempoPace} for the middle of the run, 10 min easy cooldown (all within the session distance)`
+        : `Another easy aerobic day at ${easyPace} to prioritize base building`,
+      pace: qualitySessions >= 1 ? tempoPace : easyPace,
+      distance: qualitySessions >= 1 ? `${fmtDistance(tempoDistance)} total` : fmtDistance(Math.max(4, Math.round(weeklyMileage * 0.2))),
       distanceKm: qualitySessions >= 1 ? tempoDistance : Math.max(4, Math.round(weeklyMileage * 0.2)),
       dayType: qualitySessions >= 1 ? 'quality' : 'easy',
     },
@@ -228,26 +240,26 @@ function generateWeeklyPlan(
       day: 'Friday',
       workout: 'Rest or Easy Run',
       description: 'Optional short Zone 1-2 recovery shuffle or complete rest',
-      pace: getEasyPace(currentWeekPace),
-      distance: fridayOptional > 0 ? `${formatDistance(fridayOptional)} (optional)` : 'Rest',
+      pace: easyPace,
+      distance: fridayOptional > 0 ? `${fmtDistance(fridayOptional)} (optional)` : 'Rest',
       distanceKm: fridayOptional > 0 ? fridayOptional : undefined,
       dayType: fridayOptional > 0 ? 'easy' : 'rest',
     },
     {
       day: 'Saturday',
       workout: 'Long Zone 2 Run',
-      description: `Build endurance at ${getEasyPace(currentWeekPace)} (core of the easy mileage)`,
-      pace: getEasyPace(currentWeekPace),
-      distance: formatDistance(longRunDistance),
+      description: `Build endurance at ${easyPace} (core of the easy mileage)`,
+      pace: easyPace,
+      distance: fmtDistance(longRunDistance),
       distanceKm: longRunDistance,
       dayType: 'long',
     },
     {
       day: 'Sunday',
       workout: 'Recovery Run',
-      description: `Very easy pace at ${formatPace(secondsToPace(currentWeekSeconds + 75))}`,
-      pace: formatPace(secondsToPace(currentWeekSeconds + 75)),
-      distance: sundayDistance > 0 ? formatDistance(sundayDistance) : 'Rest',
+      description: `Very easy pace at ${recoveryPace}`,
+      pace: recoveryPace,
+      distance: sundayDistance > 0 ? fmtDistance(sundayDistance) : 'Rest',
       distanceKm: sundayDistance > 0 ? sundayDistance : undefined,
       dayType: sundayDistance > 0 ? 'recovery' : 'rest',
     },
@@ -259,17 +271,17 @@ function generateWeeklyPlan(
       day: 'Saturday',
       workout: 'Pre-Race Shakeout',
       description: 'Short, easy 2-3km jog with a few strides',
-      pace: getEasyPace(targetPace),
-      distance: '3 km',
+      pace: getEasyPace(targetPace, unit),
+      distance: fmtDistance(3),
       distanceKm: 3,
       dayType: 'easy',
     };
     days[6] = {
       day: 'Sunday',
       workout: `RACE DAY - ${info.name}`,
-      description: `Warm up with 10 min easy jogging and a few strides. Target pace: ${formatPace(targetPace)} - Go get your PR!`,
-      pace: formatPace(targetPace),
-      distance: formatDistance(info.km),
+      description: `Warm up with 10 min easy jogging and a few strides. Target pace: ${fmtPace(targetPace)} - Go get your PR!`,
+      pace: fmtPace(targetPace),
+      distance: fmtDistance(info.km),
       distanceKm: info.km,
       dayType: 'quality',
     };
@@ -289,7 +301,7 @@ function generateWeeklyPlan(
     phase,
     isCutback: isCutback || undefined,
     days,
-    totalMileage: formatMileage(scheduledMileage(days)),
+    totalMileage: formatMileage(scheduledMileage(days), unit),
   };
 }
 
@@ -300,7 +312,8 @@ export function generateTrainingPlan(
   trainingDays: number,
   currentWeeklyMileage = 0,
   longestRecentRun = 0,
-  experienceLevel: ExperienceLevel = 'intermediate'
+  experienceLevel: ExperienceLevel = 'intermediate',
+  unit: DistanceUnit = 'km'
 ): TrainingPlan {
   const info = DISTANCE_INFO[distance];
   const normalizedCurrentPace = secondsToPace(paceToSeconds(currentPace));
@@ -319,7 +332,8 @@ export function generateTrainingPlan(
       trainingDays,
       normalizedWeeklyMileage,
       normalizedLongestRun,
-      experienceLevel
+      experienceLevel,
+      unit
     ));
   }
 
@@ -339,7 +353,7 @@ export function generateTrainingPlan(
       : 'strides and easy aerobic work';
   const distributionNote = `Plan targets ~80% easy/Zone 2 mileage with controlled ${qualityWork} adjusted to your available training days.`;
   const trainingLoadNote = normalizedWeeklyMileage > 0 && normalizedLongestRun > 0
-    ? ` It starts from your current ${formatDistance(normalizedWeeklyMileage)}/week load and ${formatDistance(normalizedLongestRun)} longest recent run.`
+    ? ` It starts from your current ${formatDistance(normalizedWeeklyMileage, unit)}/week load and ${formatDistance(normalizedLongestRun, unit)} longest recent run.`
     : '';
   const experienceNote = ` Volume and intensity are scaled for a ${EXPERIENCE_INFO[experienceLevel].name.toLowerCase()} runner.`;
 
@@ -350,8 +364,9 @@ export function generateTrainingPlan(
     currentWeeklyMileage: normalizedWeeklyMileage || undefined,
     longestRecentRun: normalizedLongestRun || undefined,
     experienceLevel,
+    unit,
     trainingDays,
     weeks,
-    summary: `This ${info.weeks}-week plan will guide you from ${formatPace(normalizedCurrentPace)} to ${formatPace(normalizedTargetPace)} per kilometer on ${trainingDays} days/week. ${improvementText} ${distributionNote}${trainingLoadNote}${experienceNote}`,
+    summary: `This ${info.weeks}-week plan will guide you from ${formatPace(normalizedCurrentPace, unit)} to ${formatPace(normalizedTargetPace, unit)} ${unit === 'mi' ? 'per mile' : 'per kilometer'} on ${trainingDays} days/week. ${improvementText} ${distributionNote}${trainingLoadNote}${experienceNote}`,
   };
 }

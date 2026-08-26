@@ -162,6 +162,37 @@ describe('generateTrainingPlan', () => {
     })
   })
 
+  describe('unit display', () => {
+    it('defaults to kilometers', () => {
+      const plan = generateTrainingPlan('10k', defaultCurrentPace, defaultTargetPace, 5, 30, 10)
+
+      expect(plan.unit).toBe('km')
+      expect(plan.summary).toContain('per kilometer')
+      expect(plan.weeks[0].totalMileage).toContain(' km')
+    })
+
+    it('formats distances and paces in miles when requested', () => {
+      const plan = generateTrainingPlan('10k', defaultCurrentPace, defaultTargetPace, 5, 30, 10, 'intermediate', 'mi')
+
+      expect(plan.unit).toBe('mi')
+      expect(plan.summary).toContain('per mile')
+      // 6:00/km is about 9:39/mi.
+      expect(plan.summary).toContain('9:39/mi')
+      expect(plan.weeks[0].totalMileage).toContain(' mi')
+
+      const paces = plan.weeks.flatMap((week) => week.days).map((day) => day.pace).filter(Boolean)
+      paces.forEach((pace) => expect(pace).toContain('/mi'))
+    })
+
+    it('keeps distanceKm canonical in kilometers regardless of display unit', () => {
+      const plan = generateTrainingPlan('full', defaultCurrentPace, defaultTargetPace, 5, 40, 15, 'intermediate', 'mi')
+      const raceDay = plan.weeks[plan.weeks.length - 1].days.find((day) => day.workout.includes('RACE DAY'))
+
+      expect(raceDay?.distanceKm).toBe(42.2)
+      expect(raceDay?.distance).toBe('26.2 mi')
+    })
+  })
+
   describe('training phases', () => {
     it('assigns Base Building phase to early weeks', () => {
       const plan = generateTrainingPlan('full', defaultCurrentPace, defaultTargetPace, defaultTrainingDays)
