@@ -6,6 +6,8 @@ import {
   clearPlanProgress,
   loadWeekFeedback,
   setWeekFeedback,
+  loadWorkoutLog,
+  setWorkoutLogEntry,
 } from './progressStorage'
 
 describe('progressStorage', () => {
@@ -71,6 +73,47 @@ describe('progressStorage', () => {
 
     expect(loadWeekFeedback('plan-a')).toEqual({})
     expect(loadWeekFeedback('plan-b')).toEqual({ 1: 'fresh' })
+  })
+
+  it('stores and reloads workout log entries per plan', () => {
+    setWorkoutLogEntry('plan-a', dayKey(1, 1), { rpe: 7, note: 'Hot day, felt hard' })
+    setWorkoutLogEntry('plan-a', dayKey(1, 3), { rpe: 4 })
+    setWorkoutLogEntry('plan-b', dayKey(1, 1), { note: 'Treadmill' })
+
+    expect(loadWorkoutLog('plan-a')).toEqual({
+      'w1-d1': { rpe: 7, note: 'Hot day, felt hard' },
+      'w1-d3': { rpe: 4 },
+    })
+    expect(loadWorkoutLog('plan-b')).toEqual({ 'w1-d1': { note: 'Treadmill' } })
+    expect(loadWorkoutLog('missing')).toEqual({})
+  })
+
+  it('clamps RPE to 1-10 and trims notes', () => {
+    setWorkoutLogEntry('plan-a', dayKey(1, 1), { rpe: 14, note: '  windy  ' })
+    setWorkoutLogEntry('plan-a', dayKey(1, 3), { rpe: 0 })
+
+    expect(loadWorkoutLog('plan-a')).toEqual({
+      'w1-d1': { rpe: 10, note: 'windy' },
+      'w1-d3': { rpe: 1 },
+    })
+  })
+
+  it('removes a log entry when both fields are cleared', () => {
+    setWorkoutLogEntry('plan-a', dayKey(1, 1), { rpe: 6, note: 'ok' })
+    const log = setWorkoutLogEntry('plan-a', dayKey(1, 1), { note: '   ' })
+
+    expect(log).toEqual({})
+    expect(loadWorkoutLog('plan-a')).toEqual({})
+  })
+
+  it('clears workout logs along with plan progress', () => {
+    setWorkoutLogEntry('plan-a', dayKey(1, 1), { rpe: 5 })
+    setWorkoutLogEntry('plan-b', dayKey(1, 1), { rpe: 8 })
+
+    clearPlanProgress('plan-a')
+
+    expect(loadWorkoutLog('plan-a')).toEqual({})
+    expect(loadWorkoutLog('plan-b')).toEqual({ 'w1-d1': { rpe: 8 } })
   })
 
   it('survives corrupted storage', () => {

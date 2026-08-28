@@ -9,8 +9,21 @@ export type WeekFeedback = 'fresh' | 'normal' | 'tired';
 // Feedback for one plan: week number -> answer. Weeks without an entry are unanswered.
 export type PlanWeekFeedback = Record<number, WeekFeedback>;
 
+// Optional detail recorded alongside a marked workout: perceived effort and a free note.
+export interface WorkoutLogEntry {
+  rpe?: number; // 1 (very easy) to 10 (max effort)
+  note?: string;
+}
+
+// Log for one plan: day key -> entry. Days without an entry have no details.
+export type PlanWorkoutLog = Record<string, WorkoutLogEntry>;
+
 const PROGRESS_KEY = 'runathon.progress.v1';
 const WEEK_FEEDBACK_KEY = 'runathon.week-feedback.v1';
+const WORKOUT_LOG_KEY = 'runathon.workout-log.v1';
+
+export const MIN_RPE = 1;
+export const MAX_RPE = 10;
 
 export function dayKey(week: number, dayIndex: number): string {
   return `w${week}-d${dayIndex}`;
@@ -79,6 +92,39 @@ export function setWeekFeedback(planId: string, week: number, feedback: WeekFeed
   return planFeedback;
 }
 
+export function loadWorkoutLog(planId: string): PlanWorkoutLog {
+  const log = loadRecord<PlanWorkoutLog>(WORKOUT_LOG_KEY)[planId];
+  return typeof log === 'object' && log !== null ? log : {};
+}
+
+function normalizeLogEntry(entry: WorkoutLogEntry): WorkoutLogEntry | null {
+  const normalized: WorkoutLogEntry = {};
+  if (entry.rpe !== undefined && Number.isFinite(entry.rpe)) {
+    normalized.rpe = Math.min(MAX_RPE, Math.max(MIN_RPE, Math.round(entry.rpe)));
+  }
+  const note = entry.note?.trim();
+  if (note) normalized.note = note;
+  return normalized.rpe === undefined && normalized.note === undefined ? null : normalized;
+}
+
+export function setWorkoutLogEntry(
+  planId: string,
+  key: string,
+  entry: WorkoutLogEntry
+): PlanWorkoutLog {
+  const all = loadRecord<PlanWorkoutLog>(WORKOUT_LOG_KEY);
+  const log = { ...(all[planId] ?? {}) };
+  const normalized = normalizeLogEntry(entry);
+  if (normalized === null) {
+    delete log[key];
+  } else {
+    log[key] = normalized;
+  }
+  all[planId] = log;
+  persistRecord(WORKOUT_LOG_KEY, all);
+  return log;
+}
+
 export function clearPlanProgress(planId: string): void {
   const allProgress = loadAllProgress();
   if (planId in allProgress) {
@@ -89,5 +135,10 @@ export function clearPlanProgress(planId: string): void {
   if (planId in allFeedback) {
     delete allFeedback[planId];
     persistRecord(WEEK_FEEDBACK_KEY, allFeedback);
+  }
+  const allLogs = loadRecord<PlanWorkoutLog>(WORKOUT_LOG_KEY);
+  if (planId in allLogs) {
+    delete allLogs[planId];
+    persistRecord(WORKOUT_LOG_KEY, allLogs);
   }
 }
