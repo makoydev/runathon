@@ -156,6 +156,32 @@ describe('App', () => {
     expect(screen.queryByText('Week 1 check-in')).not.toBeInTheDocument()
   })
 
+  it('records perceived effort and notes for a marked workout', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /5K, 5 kilometers/i }))
+    fireEvent.click(screen.getByRole('button', { name: /generate your personalized training plan/i }))
+
+    // Effort and note controls only appear once a workout is marked.
+    expect(screen.queryAllByLabelText(/perceived effort for week 1/i)).toHaveLength(0)
+
+    fireEvent.click(screen.getAllByRole('button', { name: /mark week 1 .* as completed/i })[0])
+
+    const rpeSelect = screen.getAllByLabelText(/perceived effort for week 1/i)[0]
+    fireEvent.change(rpeSelect, { target: { value: '7' } })
+    expect(rpeSelect).toHaveValue('7')
+
+    const noteInput = screen.getAllByLabelText(/notes for week 1/i)[0]
+    fireEvent.change(noteInput, { target: { value: 'Hot day, hilly route' } })
+    fireEvent.blur(noteInput)
+
+    // Both persist across a reload.
+    cleanup()
+    render(<App />)
+    expect(screen.getAllByLabelText(/perceived effort for week 1/i)[0]).toHaveValue('7')
+    expect(screen.getAllByLabelText(/notes for week 1/i)[0]).toHaveValue('Hot day, hilly route')
+  })
+
   it('deletes a saved plan from the list', () => {
     render(<App />)
 

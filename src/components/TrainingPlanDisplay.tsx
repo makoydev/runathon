@@ -8,13 +8,23 @@ import {
   clearPlanProgress,
   loadWeekFeedback,
   setWeekFeedback,
+  loadWorkoutLog,
+  setWorkoutLogEntry,
   dayKey,
 } from '../utils/progressStorage';
-import type { PlanProgress, PlanWeekFeedback, WeekFeedback, WorkoutStatus } from '../utils/progressStorage';
+import type {
+  PlanProgress,
+  PlanWeekFeedback,
+  PlanWorkoutLog,
+  WeekFeedback,
+  WorkoutLogEntry,
+  WorkoutStatus,
+} from '../utils/progressStorage';
 import { summarizeProgress } from '../utils/progressSummary';
 import { applyWeekAdjustments, nextFeedbackWeek } from '../utils/weekAdjustment';
 import { ProgressSummaryCard } from './ProgressSummaryCard';
 import { WeekCheckInCard } from './WeekCheckInCard';
+import { WorkoutLogControls } from './WorkoutLogControls';
 import { useState } from 'react';
 
 interface TrainingPlanDisplayProps {
@@ -29,9 +39,11 @@ interface WeekCardProps {
   onToggle: () => void;
   progress: PlanProgress;
   onStatusToggle: (key: string, status: WorkoutStatus) => void;
+  log: PlanWorkoutLog;
+  onLogChange: (key: string, entry: WorkoutLogEntry) => void;
 }
 
-function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle }: WeekCardProps) {
+function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle, log, onLogChange }: WeekCardProps) {
   const phaseColors: Record<string, string> = {
     'Base Building': 'bg-emerald-100 text-emerald-700',
     'Build Phase': 'bg-amber-100 text-amber-700',
@@ -122,6 +134,13 @@ function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle }: Week
                     )}
                   </div>
                   <p className="text-sm text-slate-500 mt-1 md:ml-[96px]">{day.description}</p>
+                  {status !== undefined && (
+                    <WorkoutLogControls
+                      label={`week ${week.week} ${day.day} ${day.workout}`}
+                      entry={log[dayKey(week.week, idx)]}
+                      onChange={(entry) => onLogChange(dayKey(week.week, idx), entry)}
+                    />
+                  )}
                 </div>
                 <div className="flex items-center gap-4 text-sm">
                   {day.pace && (
@@ -178,6 +197,7 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set([1]));
   const [progress, setProgress] = useState<PlanProgress>(() => loadPlanProgress(planId));
   const [feedback, setFeedback] = useState<PlanWeekFeedback>(() => loadWeekFeedback(planId));
+  const [log, setLog] = useState<PlanWorkoutLog>(() => loadWorkoutLog(planId));
   const info = DISTANCE_INFO[plan.distance];
   const unit = plan.unit ?? 'km';
 
@@ -195,10 +215,15 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
     setFeedback(setWeekFeedback(planId, week, answer));
   };
 
+  const handleLogChange = (key: string, entry: WorkoutLogEntry) => {
+    setLog(setWorkoutLogEntry(planId, key, entry));
+  };
+
   const handleResetProgress = () => {
     clearPlanProgress(planId);
     setProgress({});
     setFeedback({});
+    setLog({});
   };
 
   const toggleWeek = (week: number) => {
@@ -322,6 +347,8 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
             onToggle={() => toggleWeek(week.week)}
             progress={progress}
             onStatusToggle={handleStatusToggle}
+            log={log}
+            onLogChange={handleLogChange}
           />
         ))}
       </div>
