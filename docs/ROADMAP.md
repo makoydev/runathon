@@ -71,7 +71,7 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
   - Why: plans become more useful when they react to missed workouts or excessive fatigue.
   - Notes: ask simple questions at week boundaries and adjust the next week conservatively.
 
-- [ ] Add perceived effort and notes.
+- [x] Add perceived effort and notes.
   - Why: pace alone misses fatigue, terrain, heat, and recovery status.
   - Notes: record RPE 1-10 and optional notes per workout.
 
