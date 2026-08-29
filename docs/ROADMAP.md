@@ -125,11 +125,11 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
   - Why: current coverage now includes pace input, but distance selection, training-days changes, and plan display should be covered too.
   - Notes: test user-visible behavior rather than implementation details.
 
-- [ ] Add Playwright smoke tests.
+- [x] Add Playwright smoke tests.
   - Why: a browser-level test can catch layout and interaction regressions that unit tests miss.
   - Notes: cover generate, expand/collapse weeks, reset, and mobile viewport rendering.
 
-- [ ] Add CI checks.
+- [x] Add CI checks.
   - Why: lint, test, and build should run before merges.
   - Notes: use GitHub Actions with Node 22.12.0 from `.nvmrc`.
 
