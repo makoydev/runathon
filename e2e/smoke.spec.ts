@@ -62,8 +62,10 @@ test('tracks a workout and shows the progress summary', async ({ page }) => {
 
 test('renders without horizontal overflow', async ({ page }) => {
   const noHorizontalScroll = async () => {
+    // Compare against innerWidth, not clientWidth: on Linux the classic
+    // vertical scrollbar shrinks clientWidth, which reads as false overflow.
     const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+      () => document.documentElement.scrollWidth - window.innerWidth
     );
     expect(overflow).toBeLessThanOrEqual(0);
   };
