@@ -9,5 +9,7 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     setupFiles: './src/test/setup.ts',
+    // Playwright owns e2e/; keep vitest from picking up its .spec files.
+    exclude: ['node_modules/**', 'e2e/**'],
   },
 })
