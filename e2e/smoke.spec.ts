@@ -60,6 +60,14 @@ test('tracks a workout and shows the progress summary', async ({ page }) => {
   await expect(page.getByText(/^1 of \d+$/)).toBeVisible();
 });
 
+test('opens a shared plan link directly on the plan view', async ({ page }) => {
+  await page.goto('/?d=10k&cp=360&tp=330&td=5&wm=30&lr=10');
+
+  await expect(page.getByRole('heading', { name: '10K Training Plan' })).toBeVisible();
+  // The share query is stripped after import.
+  await expect(page).toHaveURL('http://localhost:4173/');
+});
+
 test('renders without horizontal overflow', async ({ page }) => {
   const noHorizontalScroll = async () => {
     // Compare against innerWidth, not clientWidth: on Linux the classic

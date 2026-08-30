@@ -13,6 +13,7 @@ import { assessGoalFeasibility } from './utils/goalFeasibility';
 import { loadSavedPlans, savePlan, deleteSavedPlan, loadActivePlanId, storeActivePlanId } from './utils/planStorage';
 import type { SavedPlan } from './utils/planStorage';
 import { clearPlanProgress } from './utils/progressStorage';
+import { decodeShareParams, sameInputs } from './utils/planShare';
 import { loadUnit, storeUnit, convertPace, unitToKm, kmToUnit } from './utils/units';
 import type { RaceDistance, Pace, ExperienceLevel, DistanceUnit } from './types';
 
@@ -28,6 +29,28 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
+// Opening a share link regenerates the plan from the URL's inputs, saves it
+// (reusing an identical already-saved plan), and makes it active. The query is
+// then stripped so a refresh doesn't re-import.
+function importSharedPlan(): void {
+  const inputs = decodeShareParams(window.location.search);
+  if (!inputs) return;
+  const plan = generateTrainingPlan(
+    inputs.distance,
+    inputs.currentPace,
+    inputs.targetPace,
+    inputs.trainingDays,
+    inputs.currentWeeklyMileage ?? 0,
+    inputs.longestRecentRun ?? 0,
+    inputs.experienceLevel,
+    inputs.unit
+  );
+  const existing = loadSavedPlans().find((saved) => sameInputs(saved.plan, plan));
+  const record = existing ?? savePlan(plan);
+  storeActivePlanId(record.id);
+  window.history.replaceState(null, '', window.location.pathname);
+}
+
 function App() {
   const [unit, setUnit] = useState<DistanceUnit>(loadUnit);
   const [selectedDistance, setSelectedDistance] = useState<RaceDistance | null>(null);
@@ -39,7 +62,12 @@ function App() {
     round1(kmToUnit(DEFAULTS.longestRecentRun, loadUnit())));
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('intermediate');
   const [trainingDays, setTrainingDays] = useState<number>(5);
-  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(loadSavedPlans);
+  // The share-link import runs inside this initializer so the saved list and
+  // the active-plan initializer below both see its result on first render.
+  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
+    importSharedPlan();
+    return loadSavedPlans();
+  });
   // Progress tracking is keyed by the saved plan's id, so keep the full saved record active.
   const [activePlan, setActivePlan] = useState<SavedPlan | null>(() => {
     const activeId = loadActivePlanId();

@@ -21,6 +21,7 @@ import type {
   WorkoutStatus,
 } from '../utils/progressStorage';
 import { summarizeProgress } from '../utils/progressSummary';
+import { buildShareUrl } from '../utils/planShare';
 import { applyWeekAdjustments, nextFeedbackWeek } from '../utils/weekAdjustment';
 import { ProgressSummaryCard } from './ProgressSummaryCard';
 import { WeekCheckInCard } from './WeekCheckInCard';
@@ -198,6 +199,7 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
   const [progress, setProgress] = useState<PlanProgress>(() => loadPlanProgress(planId));
   const [feedback, setFeedback] = useState<PlanWeekFeedback>(() => loadWeekFeedback(planId));
   const [log, setLog] = useState<PlanWorkoutLog>(() => loadWorkoutLog(planId));
+  const [shareCopied, setShareCopied] = useState(false);
   const info = DISTANCE_INFO[plan.distance];
   const unit = plan.unit ?? 'km';
 
@@ -224,6 +226,18 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
     setProgress({});
     setFeedback({});
     setLog({});
+  };
+
+  // Sharing encodes the plan inputs; the recipient's app regenerates the plan.
+  const handleShare = async () => {
+    const url = buildShareUrl(plan);
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      window.prompt('Copy this link to share your plan:', url);
+    }
   };
 
   const toggleWeek = (week: number) => {
@@ -303,9 +317,18 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
         <WeekCheckInCard week={checkInWeek} onAnswer={(answer) => handleCheckInAnswer(checkInWeek, answer)} />
       )}
 
-      <div className="flex justify-between items-center">
+      {/* Stack and wrap on small screens so the buttons never overlap. */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
         <h3 className="text-xl font-semibold text-slate-700">Weekly Schedule</h3>
-        <div className="flex gap-2 print:hidden">
+        <div className="flex flex-wrap gap-2 print:hidden">
+          <button
+            onClick={handleShare}
+            aria-label="Copy a shareable link to this plan"
+            title="Copies a link that opens this plan for anyone"
+            className="px-3 py-1 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            {shareCopied ? 'Link Copied!' : 'Share Link'}
+          </button>
           <button
             onClick={() => downloadCalendar(effectivePlan)}
             aria-label="Export plan as a calendar file, starting next Monday"

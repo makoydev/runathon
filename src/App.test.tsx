@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, cleanup } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { fireEvent, render, screen, cleanup, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
 describe('App', () => {
   beforeEach(() => {
     localStorage.clear()
+    window.history.replaceState(null, '', '/')
   })
   it('disables plan generation when clearing the current pace to zero', () => {
     render(<App />)
@@ -180,6 +181,48 @@ describe('App', () => {
     render(<App />)
     expect(screen.getAllByLabelText(/perceived effort for week 1/i)[0]).toHaveValue('7')
     expect(screen.getAllByLabelText(/notes for week 1/i)[0]).toHaveValue('Hot day, hilly route')
+  })
+
+  it('opens a shared plan link directly on the plan view', () => {
+    window.history.replaceState(null, '', '/?d=5k&cp=360&tp=330&td=4&xp=beginner')
+    render(<App />)
+
+    expect(screen.getByText('5K Training Plan')).toBeInTheDocument()
+    // The query is stripped so a refresh doesn't re-import.
+    expect(window.location.search).toBe('')
+  })
+
+  it('reuses the saved plan when the same share link is opened twice', () => {
+    window.history.replaceState(null, '', '/?d=5k&cp=360&tp=330&td=4')
+    render(<App />)
+    cleanup()
+
+    window.history.replaceState(null, '', '/?d=5k&cp=360&tp=330&td=4')
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /create a new training plan/i }))
+
+    expect(screen.getAllByRole('button', { name: /^view 5k plan/i })).toHaveLength(1)
+  })
+
+  it('falls back to the form when a share link is invalid', () => {
+    window.history.replaceState(null, '', '/?d=ultra&cp=360&tp=330&td=4')
+    render(<App />)
+
+    expect(screen.getByText('Select a race distance to get started')).toBeInTheDocument()
+  })
+
+  it('copies a share link for the current plan', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /10K, 10 kilometers/i }))
+    fireEvent.click(screen.getByRole('button', { name: /generate your personalized training plan/i }))
+    fireEvent.click(screen.getByRole('button', { name: /copy a shareable link/i }))
+
+    await waitFor(() => expect(screen.getByText('Link Copied!')).toBeInTheDocument())
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('d=10k'))
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('cp=360'))
   })
 
   it('deletes a saved plan from the list', () => {
