@@ -99,7 +99,7 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
 
 ## Priority 5: Sharing And Integrations
 
-- [ ] Add shareable plan links.
+- [x] Add shareable plan links.
   - Why: users may want to send a plan to a coach or friend.
   - Notes: start with URL-encoded plan inputs before introducing server-side storage.
 
