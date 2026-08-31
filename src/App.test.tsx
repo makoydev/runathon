@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, cleanup, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, cleanup, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
@@ -245,6 +245,49 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /generate your personalized training plan/i }))
     expect(screen.getByText('3 days/week')).toBeInTheDocument()
+  })
+
+  it('applies schedule preferences to the generated plan', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /10K, 10 kilometers/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Long run on Wednesday' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Tuesday unavailable' }))
+    fireEvent.click(screen.getByRole('button', { name: /generate your personalized training plan/i }))
+
+    // Week 1 is expanded by default; Wednesday holds the long run and Tuesday rests.
+    const week1 = screen.getByRole('region', { name: 'Week 1 schedule' })
+    const rows = within(week1).getAllByText(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/)
+    expect(rows.length).toBe(7)
+    expect(within(week1).getByText('Long Zone 2 Run').closest('div')?.textContent).toContain('Wednesday')
+    const tuesdayRow = within(week1).getByText('Tuesday').closest('div')
+    expect(tuesdayRow?.textContent).toContain('Rest')
+  })
+
+  it('moves the long run preference off a day marked unavailable', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Long run on Sunday' }))
+    expect(screen.getByRole('button', { name: 'Long run on Sunday' })).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sunday unavailable' }))
+    expect(screen.getByRole('button', { name: 'Long run on Saturday' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('blocks generation when too many days are unavailable', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /5K, 5 kilometers/i }))
+    // Default is 5 training days; block three weekdays to leave only four.
+    fireEvent.click(screen.getByRole('button', { name: 'Monday unavailable' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Tuesday unavailable' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Wednesday unavailable' }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Only 4 days are available')
+    expect(screen.getByRole('button', { name: /complete the required training details/i })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Wednesday unavailable' }))
+    expect(screen.getByRole('button', { name: /generate your personalized training plan/i })).toBeEnabled()
   })
 
   it('deletes a saved plan from the list', () => {

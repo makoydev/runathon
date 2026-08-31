@@ -7,6 +7,7 @@ import { CurrentLoadInputs } from './components/CurrentLoadInputs';
 import { ExperienceLevelSelector } from './components/ExperienceLevelSelector';
 import { GoalFeasibilityCard } from './components/GoalFeasibilityCard';
 import { PlanComparisonCard } from './components/PlanComparisonCard';
+import { PlanAssumptionsEditor } from './components/PlanAssumptionsEditor';
 import { SavedPlansList } from './components/SavedPlansList';
 import { UnitToggle } from './components/UnitToggle';
 import { generateTrainingPlan } from './utils/planGenerator';
@@ -16,8 +17,9 @@ import type { SavedPlan } from './utils/planStorage';
 import { clearPlanProgress } from './utils/progressStorage';
 import { decodeShareParams, sameInputs } from './utils/planShare';
 import { comparePlanOptions } from './utils/planComparison';
+import { applyPlanAssumptions, maxTrainingDays, DEFAULT_ASSUMPTIONS } from './utils/planAssumptions';
 import { loadUnit, storeUnit, convertPace, unitToKm, kmToUnit } from './utils/units';
-import type { RaceDistance, Pace, ExperienceLevel, DistanceUnit } from './types';
+import type { RaceDistance, Pace, ExperienceLevel, DistanceUnit, PlanAssumptions } from './types';
 
 // Form defaults, expressed in km and converted for display when miles are active.
 const DEFAULTS = {
@@ -37,15 +39,18 @@ function round1(value: number): number {
 function importSharedPlan(): void {
   const inputs = decodeShareParams(window.location.search);
   if (!inputs) return;
-  const plan = generateTrainingPlan(
-    inputs.distance,
-    inputs.currentPace,
-    inputs.targetPace,
-    inputs.trainingDays,
-    inputs.currentWeeklyMileage ?? 0,
-    inputs.longestRecentRun ?? 0,
-    inputs.experienceLevel,
-    inputs.unit
+  const plan = applyPlanAssumptions(
+    generateTrainingPlan(
+      inputs.distance,
+      inputs.currentPace,
+      inputs.targetPace,
+      inputs.trainingDays,
+      inputs.currentWeeklyMileage ?? 0,
+      inputs.longestRecentRun ?? 0,
+      inputs.experienceLevel,
+      inputs.unit
+    ),
+    inputs.assumptions
   );
   const existing = loadSavedPlans().find((saved) => sameInputs(saved.plan, plan));
   const record = existing ?? savePlan(plan);
@@ -65,6 +70,7 @@ function App() {
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('intermediate');
   const [trainingDays, setTrainingDays] = useState<number>(5);
   const [showComparison, setShowComparison] = useState(false);
+  const [assumptions, setAssumptions] = useState<PlanAssumptions>(DEFAULT_ASSUMPTIONS);
   // The share-link import runs inside this initializer so the saved list and
   // the active-plan initializer below both see its result on first render.
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
@@ -89,7 +95,9 @@ function App() {
     longestRecentRun > 0 &&
     longestRecentRun <= currentWeeklyMileage;
 
-  const canGenerate = selectedDistance !== null && hasValidPaces && hasValidTrainingLoad;
+  const hasValidSchedule = trainingDays <= maxTrainingDays(assumptions);
+
+  const canGenerate = selectedDistance !== null && hasValidPaces && hasValidTrainingLoad && hasValidSchedule;
 
   // Inputs are edited in the display unit; convert to canonical km at this boundary.
   const currentPaceKm = convertPace(currentPace, unit, 'km');
@@ -116,16 +124,19 @@ function App() {
   };
 
   const handleGenerate = () => {
-    if (!selectedDistance || !hasValidPaces || !hasValidTrainingLoad) return;
-    const newPlan = generateTrainingPlan(
-      selectedDistance,
-      currentPaceKm,
-      targetPaceKm,
-      trainingDays,
-      weeklyMileageKm,
-      longestRunKm,
-      experienceLevel,
-      unit
+    if (!selectedDistance || !canGenerate) return;
+    const newPlan = applyPlanAssumptions(
+      generateTrainingPlan(
+        selectedDistance,
+        currentPaceKm,
+        targetPaceKm,
+        trainingDays,
+        weeklyMileageKm,
+        longestRunKm,
+        experienceLevel,
+        unit
+      ),
+      assumptions
     );
     const saved = savePlan(newPlan);
     storeActivePlanId(saved.id);
@@ -156,6 +167,7 @@ function App() {
     setLongestRecentRun(round1(kmToUnit(DEFAULTS.longestRecentRun, unit)));
     setExperienceLevel('intermediate');
     setTrainingDays(5);
+    setAssumptions(DEFAULT_ASSUMPTIONS);
   };
 
   if (activePlan) {
@@ -217,6 +229,12 @@ function App() {
         <ExperienceLevelSelector experienceLevel={experienceLevel} onChange={setExperienceLevel} />
 
         <TrainingDaysSelector trainingDays={trainingDays} onChange={setTrainingDays} />
+
+        <PlanAssumptionsEditor
+          assumptions={assumptions}
+          trainingDays={trainingDays}
+          onChange={setAssumptions}
+        />
 
         {canGenerate && (
           <div className="flex justify-center">
