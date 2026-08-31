@@ -29,6 +29,23 @@ export interface TrainingWeek {
   adjustmentNote?: string;
 }
 
+export const WEEKDAYS = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+] as const;
+
+// Schedule constraints the runner sets before generating: where the long run
+// lands and which weekdays must stay workout-free.
+export interface PlanAssumptions {
+  longRunDay: string;
+  unavailableDays: string[];
+}
+
 export interface TrainingPlan {
   distance: RaceDistance;
   currentPace: Pace;
@@ -38,6 +55,8 @@ export interface TrainingPlan {
   experienceLevel?: ExperienceLevel;
   unit?: DistanceUnit;
   trainingDays: number;
+  /** Set when the plan was generated with non-default schedule constraints. */
+  assumptions?: PlanAssumptions;
   weeks: TrainingWeek[];
   summary: string;
 }
