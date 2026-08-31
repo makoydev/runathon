@@ -45,7 +45,7 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
   - Why: runners often want to compare 3-day, 4-day, and 5-day schedules before choosing.
   - Notes: compare total mileage, number of quality days, longest run, and race-week structure.
 
-- [ ] Add editable plan assumptions.
+- [x] Add editable plan assumptions.
   - Why: users may need to move long runs or avoid specific weekdays.
   - Notes: start with preferred long-run day and unavailable weekdays before supporting full drag-and-drop editing.
 
