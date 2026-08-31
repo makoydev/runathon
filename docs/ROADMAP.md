@@ -41,7 +41,7 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
   - Why: users should not lose a plan after refreshing or closing the browser.
   - Notes: include create date, race distance, target pace, and training-days setting.
 
-- [ ] Add plan comparison.
+- [x] Add plan comparison.
   - Why: runners often want to compare 3-day, 4-day, and 5-day schedules before choosing.
   - Notes: compare total mileage, number of quality days, longest run, and race-week structure.
 
