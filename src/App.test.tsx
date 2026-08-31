@@ -225,6 +225,28 @@ describe('App', () => {
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('cp=360'))
   })
 
+  it('compares schedules and applies the chosen training frequency', () => {
+    render(<App />)
+
+    // The comparison toggle only appears once the inputs are valid.
+    expect(screen.queryByRole('button', { name: /compare 3 to 6 day schedules/i })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /10K, 10 kilometers/i }))
+    fireEvent.click(screen.getByRole('button', { name: /compare 3 to 6 day schedules/i }))
+
+    expect(screen.getByText('Compare Schedules', { selector: 'h3' })).toBeInTheDocument()
+    expect(screen.getByText('Total mileage')).toBeInTheDocument()
+    expect(screen.getByText('Longest run')).toBeInTheDocument()
+
+    // The current 5-day selection is highlighted; choosing 3 days updates the form.
+    expect(screen.getByRole('button', { name: /use the 5-day schedule/i })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: /use the 3-day schedule/i }))
+    expect(screen.getByRole('button', { name: /use the 3-day schedule/i })).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: /generate your personalized training plan/i }))
+    expect(screen.getByText('3 days/week')).toBeInTheDocument()
+  })
+
   it('deletes a saved plan from the list', () => {
     render(<App />)
 

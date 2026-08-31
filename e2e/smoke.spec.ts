@@ -81,6 +81,12 @@ test('renders without horizontal overflow', async ({ page }) => {
   await page.goto('/');
   await noHorizontalScroll();
 
+  // The schedule comparison table scrolls inside its own container.
+  await page.getByRole('button', { name: /10K, 10 kilometers/i }).click();
+  await page.getByRole('button', { name: /compare 3 to 6 day schedules/i }).click();
+  await expect(page.getByText('Total mileage')).toBeVisible();
+  await noHorizontalScroll();
+
   await generatePlan(page);
   await page.getByRole('button', { name: 'Expand all weeks' }).click();
   await noHorizontalScroll();

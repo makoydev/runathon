@@ -6,6 +6,7 @@ import { TrainingDaysSelector } from './components/TrainingDaysSelector';
 import { CurrentLoadInputs } from './components/CurrentLoadInputs';
 import { ExperienceLevelSelector } from './components/ExperienceLevelSelector';
 import { GoalFeasibilityCard } from './components/GoalFeasibilityCard';
+import { PlanComparisonCard } from './components/PlanComparisonCard';
 import { SavedPlansList } from './components/SavedPlansList';
 import { UnitToggle } from './components/UnitToggle';
 import { generateTrainingPlan } from './utils/planGenerator';
@@ -14,6 +15,7 @@ import { loadSavedPlans, savePlan, deleteSavedPlan, loadActivePlanId, storeActiv
 import type { SavedPlan } from './utils/planStorage';
 import { clearPlanProgress } from './utils/progressStorage';
 import { decodeShareParams, sameInputs } from './utils/planShare';
+import { comparePlanOptions } from './utils/planComparison';
 import { loadUnit, storeUnit, convertPace, unitToKm, kmToUnit } from './utils/units';
 import type { RaceDistance, Pace, ExperienceLevel, DistanceUnit } from './types';
 
@@ -62,6 +64,7 @@ function App() {
     round1(kmToUnit(DEFAULTS.longestRecentRun, loadUnit())));
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('intermediate');
   const [trainingDays, setTrainingDays] = useState<number>(5);
+  const [showComparison, setShowComparison] = useState(false);
   // The share-link import runs inside this initializer so the saved list and
   // the active-plan initializer below both see its result on first render.
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
@@ -96,6 +99,10 @@ function App() {
 
   const feasibility = canGenerate
     ? assessGoalFeasibility(selectedDistance, currentPaceKm, targetPaceKm, weeklyMileageKm, longestRunKm, unit)
+    : null;
+
+  const comparisonOptions = showComparison && canGenerate
+    ? comparePlanOptions(selectedDistance, currentPaceKm, targetPaceKm, weeklyMileageKm, longestRunKm, experienceLevel, unit)
     : null;
 
   const handleUnitChange = (nextUnit: DistanceUnit) => {
@@ -210,6 +217,28 @@ function App() {
         <ExperienceLevelSelector experienceLevel={experienceLevel} onChange={setExperienceLevel} />
 
         <TrainingDaysSelector trainingDays={trainingDays} onChange={setTrainingDays} />
+
+        {canGenerate && (
+          <div className="flex justify-center">
+            <button
+              onClick={() => setShowComparison(!showComparison)}
+              aria-expanded={showComparison}
+              aria-label={showComparison ? 'Hide the schedule comparison' : 'Compare 3 to 6 day schedules side by side'}
+              className="px-4 py-2 text-sm text-violet-600 hover:bg-violet-50 rounded-lg transition-colors font-medium"
+            >
+              {showComparison ? 'Hide Comparison' : 'Compare Schedules'}
+            </button>
+          </div>
+        )}
+
+        {comparisonOptions && (
+          <PlanComparisonCard
+            options={comparisonOptions}
+            selectedDays={trainingDays}
+            unit={unit}
+            onSelect={setTrainingDays}
+          />
+        )}
 
         {feasibility && <GoalFeasibilityCard feasibility={feasibility} />}
 
