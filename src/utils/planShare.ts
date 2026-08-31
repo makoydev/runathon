@@ -1,5 +1,6 @@
-import type { DistanceUnit, ExperienceLevel, Pace, RaceDistance, TrainingPlan } from '../types';
-import { DISTANCE_INFO, EXPERIENCE_INFO } from '../types';
+import type { DistanceUnit, ExperienceLevel, Pace, PlanAssumptions, RaceDistance, TrainingPlan } from '../types';
+import { DISTANCE_INFO, EXPERIENCE_INFO, WEEKDAYS } from '../types';
+import { DEFAULT_ASSUMPTIONS, isDefaultAssumptions, maxTrainingDays } from './planAssumptions';
 
 // The generator is deterministic, so a share link only needs the inputs.
 export interface SharedPlanInputs {
@@ -11,6 +12,7 @@ export interface SharedPlanInputs {
   longestRecentRun?: number;
   experienceLevel: ExperienceLevel;
   unit: DistanceUnit;
+  assumptions: PlanAssumptions;
 }
 
 const MIN_TRAINING_DAYS = 3;
@@ -39,7 +41,43 @@ export function encodeShareParams(plan: TrainingPlan): string {
   });
   if (plan.currentWeeklyMileage) params.set('wm', String(plan.currentWeeklyMileage));
   if (plan.longestRecentRun) params.set('lr', String(plan.longestRecentRun));
+  const assumptions = plan.assumptions ?? DEFAULT_ASSUMPTIONS;
+  if (!isDefaultAssumptions(assumptions)) {
+    // Weekdays travel as indexes: ld=2 is Wednesday, ud=04 is Monday+Friday.
+    params.set('ld', String(WEEKDAYS.indexOf(assumptions.longRunDay as (typeof WEEKDAYS)[number])));
+    if (assumptions.unavailableDays.length > 0) {
+      params.set(
+        'ud',
+        assumptions.unavailableDays
+          .map((day) => WEEKDAYS.indexOf(day as (typeof WEEKDAYS)[number]))
+          .sort()
+          .join('')
+      );
+    }
+  }
   return params.toString();
+}
+
+function parseAssumptions(params: URLSearchParams): PlanAssumptions | null {
+  const longDayRaw = params.get('ld');
+  const unavailableRaw = params.get('ud');
+  if (longDayRaw === null && unavailableRaw === null) return DEFAULT_ASSUMPTIONS;
+
+  let longRunDay = DEFAULT_ASSUMPTIONS.longRunDay;
+  if (longDayRaw !== null) {
+    if (!/^[0-6]$/.test(longDayRaw)) return null;
+    longRunDay = WEEKDAYS[Number(longDayRaw)];
+  }
+
+  let unavailableDays: string[] = [];
+  if (unavailableRaw !== null) {
+    if (!/^[0-6]{1,6}$/.test(unavailableRaw)) return null;
+    const indexes = [...new Set(unavailableRaw.split('').map(Number))];
+    unavailableDays = indexes.map((index) => WEEKDAYS[index]);
+  }
+
+  if (unavailableDays.includes(longRunDay)) return null;
+  return { longRunDay, unavailableDays };
 }
 
 function parsePaceSeconds(value: string | null): number | null {
@@ -81,7 +119,11 @@ export function decodeShareParams(search: string): SharedPlanInputs | null {
   const longestRecentRun = parseDistanceKm(params.get('lr'));
   if (currentWeeklyMileage === null || longestRecentRun === null) return null;
 
+  const assumptions = parseAssumptions(params);
+  if (assumptions === null || trainingDays > maxTrainingDays(assumptions)) return null;
+
   return {
+    assumptions,
     distance: distance as RaceDistance,
     currentPace: paceFromSeconds(currentPaceSeconds),
     targetPace: paceFromSeconds(targetPaceSeconds),
@@ -93,10 +135,20 @@ export function decodeShareParams(search: string): SharedPlanInputs | null {
   };
 }
 
+function sameAssumptions(a: TrainingPlan, b: TrainingPlan): boolean {
+  const assumptionsA = a.assumptions ?? DEFAULT_ASSUMPTIONS;
+  const assumptionsB = b.assumptions ?? DEFAULT_ASSUMPTIONS;
+  return (
+    assumptionsA.longRunDay === assumptionsB.longRunDay &&
+    [...assumptionsA.unavailableDays].sort().join() === [...assumptionsB.unavailableDays].sort().join()
+  );
+}
+
 // True when two plans were generated from the same inputs, so opening a share
 // link twice reuses the already-saved plan instead of duplicating it.
 export function sameInputs(a: TrainingPlan, b: TrainingPlan): boolean {
   return (
+    sameAssumptions(a, b) &&
     a.distance === b.distance &&
     paceToSeconds(a.currentPace) === paceToSeconds(b.currentPace) &&
     paceToSeconds(a.targetPace) === paceToSeconds(b.targetPace) &&

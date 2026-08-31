@@ -28,7 +28,32 @@ describe('encodeShareParams / decodeShareParams', () => {
       longestRecentRun: 10,
       experienceLevel: 'advanced',
       unit: 'mi',
+      assumptions: { longRunDay: 'Saturday', unavailableDays: [] },
     })
+  })
+
+  it('round-trips non-default schedule assumptions', () => {
+    const plan = {
+      ...makePlan(),
+      assumptions: { longRunDay: 'Sunday', unavailableDays: ['Monday', 'Friday'] },
+    }
+    const encoded = encodeShareParams(plan)
+
+    expect(encoded).toContain('ld=6')
+    expect(encoded).toContain('ud=04')
+    expect(decodeShareParams(encoded)?.assumptions).toEqual({
+      longRunDay: 'Sunday',
+      unavailableDays: ['Monday', 'Friday'],
+    })
+  })
+
+  it('rejects invalid schedule assumptions', () => {
+    expect(decodeShareParams('d=5k&cp=360&tp=330&td=4&ld=7')).toBeNull()
+    expect(decodeShareParams('d=5k&cp=360&tp=330&td=4&ud=9')).toBeNull()
+    // The long-run day cannot be unavailable.
+    expect(decodeShareParams('d=5k&cp=360&tp=330&td=4&ld=2&ud=2')).toBeNull()
+    // Four training days cannot fit into three available days.
+    expect(decodeShareParams('d=5k&cp=360&tp=330&td=4&ud=0123')).toBeNull()
   })
 
   it('omits absent optional inputs and restores them as undefined', () => {
