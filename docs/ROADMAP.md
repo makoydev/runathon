@@ -81,13 +81,13 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
 
 ## Priority 4: Accessibility And Interface Polish
 
-- [ ] Add responsive schedule controls for mobile.
+- [x] Add responsive schedule controls for mobile.
   - Why: expanded week cards can become dense on small screens.
-  - Notes: test with narrow viewports and long workout descriptions.
+  - Notes: the plan shows one week at a time as day cards that stack on narrow viewports; the overview chart doubles as the week picker.
 
-- [ ] Add keyboard navigation checks for week accordions.
-  - Why: expanding and collapsing weeks should work cleanly without a mouse.
-  - Notes: add component tests around aria state and focus behavior.
+- [x] Add keyboard navigation checks for week navigation.
+  - Why: moving between weeks should work cleanly without a mouse.
+  - Notes: accordions were replaced by a week pager; arrow keys and the chart's bar buttons are covered by the e2e smoke test.
 
 - [x] Add high-contrast/dark mode.
   - Why: training plans are often reviewed at night or outdoors.
