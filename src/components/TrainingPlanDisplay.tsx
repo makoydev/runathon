@@ -46,31 +46,31 @@ interface WeekCardProps {
 
 function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle, log, onLogChange }: WeekCardProps) {
   const phaseColors: Record<string, string> = {
-    'Base Building': 'bg-emerald-100 text-emerald-700',
-    'Build Phase': 'bg-amber-100 text-amber-700',
-    'Peak Training': 'bg-rose-100 text-rose-700',
-    'Taper': 'bg-sky-100 text-sky-700',
+    'Base Building': 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300',
+    'Build Phase': 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300',
+    'Peak Training': 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300',
+    'Taper': 'bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300',
   };
 
   const contentId = `week-${week.week}-content`;
 
   return (
-    <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-slate-200 overflow-hidden shadow-sm print:break-inside-avoid print:shadow-none">
+    <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm print:break-inside-avoid print:shadow-none">
       <button
         onClick={onToggle}
         aria-expanded={isExpanded}
         aria-controls={contentId}
         aria-label={`Week ${week.week}, ${week.phase}${week.isCutback ? ', cutback week' : ''}${week.adjustmentNote ? ', adjusted' : ''}, ${week.totalMileage}. Click to ${isExpanded ? 'collapse' : 'expand'} details.`}
-        className="w-full p-4 flex items-center justify-between hover:bg-white/50 transition-colors"
+        className="w-full p-4 flex items-center justify-between hover:bg-white/50 dark:hover:bg-slate-700/50 transition-colors"
       >
         <div className="flex items-center gap-4">
-          <span className="text-2xl font-bold text-slate-700">Week {week.week}</span>
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${phaseColors[week.phase] || 'bg-slate-100 text-slate-700'}`}>
+          <span className="text-2xl font-bold text-slate-700 dark:text-slate-200">Week {week.week}</span>
+          <span className={`px-3 py-1 rounded-full text-sm font-medium ${phaseColors[week.phase] || 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}`}>
             {week.phase}
           </span>
           {week.isCutback && (
             <span
-              className="px-3 py-1 rounded-full text-sm font-medium bg-teal-100 text-teal-700"
+              className="px-3 py-1 rounded-full text-sm font-medium bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300"
               title="Reduced volume this week so your body absorbs the training"
             >
               Cutback
@@ -78,7 +78,7 @@ function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle, log, o
           )}
           {week.adjustmentNote && (
             <span
-              className="px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-700"
+              className="px-3 py-1 rounded-full text-sm font-medium bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300"
               title={week.adjustmentNote}
             >
               Adjusted
@@ -86,9 +86,9 @@ function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle, log, o
           )}
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-slate-500">{week.totalMileage}</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400">{week.totalMileage}</span>
           <svg
-            className={`w-5 h-5 text-slate-400 transition-transform print:hidden ${isExpanded ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 text-slate-400 dark:text-slate-500 transition-transform print:hidden ${isExpanded ? 'rotate-180' : ''}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -104,10 +104,10 @@ function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle, log, o
         id={contentId}
         role="region"
         aria-label={`Week ${week.week} schedule`}
-        className={`border-t border-slate-100 print:block ${isExpanded ? '' : 'hidden'}`}
+        className={`border-t border-slate-100 dark:border-slate-700 print:block ${isExpanded ? '' : 'hidden'}`}
       >
           {week.adjustmentNote && (
-            <p className="px-4 py-2 text-sm text-amber-700 bg-amber-50 border-b border-amber-100">
+            <p className="px-4 py-2 text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border-b border-amber-100 dark:border-amber-800">
               {week.adjustmentNote}
             </p>
           )}
@@ -117,24 +117,24 @@ function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle, log, o
             return (
             <div
               key={day.day}
-              className={`p-4 ${idx !== week.days.length - 1 ? 'border-b border-slate-100' : ''} ${
-                day.workout.includes('RACE DAY') ? 'bg-gradient-to-r from-violet-50 to-rose-50' : ''
+              className={`p-4 ${idx !== week.days.length - 1 ? 'border-b border-slate-100 dark:border-slate-700' : ''} ${
+                day.workout.includes('RACE DAY') ? 'bg-gradient-to-r from-violet-50 to-rose-50 dark:from-violet-900/40 dark:to-rose-900/40' : ''
               } ${status === 'skipped' ? 'opacity-60' : ''}`}
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
-                    <span className="font-medium text-slate-500 w-24">{day.day}</span>
-                    <span className={`font-semibold ${day.workout.includes('RACE DAY') ? 'text-violet-600 text-lg' : 'text-slate-700'} ${status === 'skipped' ? 'line-through' : ''}`}>
+                    <span className="font-medium text-slate-500 dark:text-slate-400 w-24">{day.day}</span>
+                    <span className={`font-semibold ${day.workout.includes('RACE DAY') ? 'text-violet-600 dark:text-violet-300 text-lg' : 'text-slate-700 dark:text-slate-200'} ${status === 'skipped' ? 'line-through' : ''}`}>
                       {day.workout}
                     </span>
                     {status === 'completed' && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 print:hidden">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 print:hidden">
                         Done
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-slate-500 mt-1 md:ml-[96px]">{day.description}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 md:ml-[96px]">{day.description}</p>
                   {status !== undefined && (
                     <WorkoutLogControls
                       label={`week ${week.week} ${day.day} ${day.workout}`}
@@ -145,12 +145,12 @@ function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle, log, o
                 </div>
                 <div className="flex items-center gap-4 text-sm">
                   {day.pace && (
-                    <span className="px-3 py-1 bg-violet-50 text-violet-600 rounded-lg font-mono">
+                    <span className="px-3 py-1 bg-violet-50 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 rounded-lg font-mono">
                       {day.pace}
                     </span>
                   )}
                   {day.distance && (
-                    <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg">
+                    <span className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg">
                       {day.distance}
                     </span>
                   )}
@@ -164,7 +164,7 @@ function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle, log, o
                         className={`px-2 py-1 rounded-lg transition-colors ${
                           status === 'completed'
                             ? 'bg-emerald-500 text-white'
-                            : 'bg-slate-100 text-slate-500 hover:bg-emerald-100 hover:text-emerald-700'
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:text-emerald-700 dark:hover:text-emerald-300'
                         }`}
                       >
                         ✓
@@ -177,7 +177,7 @@ function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle, log, o
                         className={`px-2 py-1 rounded-lg transition-colors ${
                           status === 'skipped'
                             ? 'bg-slate-500 text-white'
-                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-700 dark:hover:text-slate-200'
                         }`}
                       >
                         ✗
@@ -319,13 +319,13 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
 
       {/* Stack and wrap on small screens so the buttons never overlap. */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-        <h3 className="text-xl font-semibold text-slate-700">Weekly Schedule</h3>
+        <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-200">Weekly Schedule</h3>
         <div className="flex flex-wrap gap-2 print:hidden">
           <button
             onClick={handleShare}
             aria-label="Copy a shareable link to this plan"
             title="Copies a link that opens this plan for anyone"
-            className="px-3 py-1 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            className="px-3 py-1 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
           >
             {shareCopied ? 'Link Copied!' : 'Share Link'}
           </button>
@@ -333,28 +333,28 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
             onClick={() => downloadCalendar(effectivePlan)}
             aria-label="Export plan as a calendar file, starting next Monday"
             title="Downloads an .ics file with the plan starting next Monday"
-            className="px-3 py-1 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            className="px-3 py-1 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
           >
             Export .ics
           </button>
           <button
             onClick={() => window.print()}
             aria-label="Print this training plan"
-            className="px-3 py-1 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            className="px-3 py-1 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
           >
             Print
           </button>
           <button
             onClick={expandAll}
             aria-label="Expand all weeks"
-            className="px-3 py-1 text-sm text-violet-600 hover:bg-violet-50 rounded-lg transition-colors"
+            className="px-3 py-1 text-sm text-violet-600 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/40 rounded-lg transition-colors"
           >
             Expand All
           </button>
           <button
             onClick={collapseAll}
             aria-label="Collapse all weeks"
-            className="px-3 py-1 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            className="px-3 py-1 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
           >
             Collapse All
           </button>

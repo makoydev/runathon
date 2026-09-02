@@ -24,7 +24,7 @@ export function WorkoutLogControls({ label, entry, onChange }: WorkoutLogControl
 
   return (
     <div className="flex flex-col sm:flex-row gap-2 mt-2 md:ml-[96px] print:hidden">
-      <label className="flex items-center gap-2 text-sm text-slate-500">
+      <label className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
         Effort
         <select
           value={entry?.rpe ?? ''}
@@ -32,7 +32,7 @@ export function WorkoutLogControls({ label, entry, onChange }: WorkoutLogControl
             onChange({ ...entry, rpe: e.target.value === '' ? undefined : Number(e.target.value) })
           }
           aria-label={`Perceived effort for ${label}`}
-          className="px-2 py-1 rounded-lg border border-slate-200 bg-white/70 text-slate-600"
+          className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300"
         >
           <option value="">RPE</option>
           {rpeValues.map((value) => (
@@ -55,7 +55,7 @@ export function WorkoutLogControls({ label, entry, onChange }: WorkoutLogControl
         placeholder="Notes - terrain, weather, how it felt"
         aria-label={`Notes for ${label}`}
         maxLength={200}
-        className="flex-1 px-3 py-1 text-sm rounded-lg border border-slate-200 bg-white/70 text-slate-600 placeholder:text-slate-400"
+        className="flex-1 px-3 py-1 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300 placeholder:text-slate-400"
       />
     </div>
   );

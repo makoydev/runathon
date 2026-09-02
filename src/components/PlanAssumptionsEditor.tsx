@@ -35,20 +35,20 @@ export function PlanAssumptionsEditor({ assumptions, trainingDays, onChange }: P
   };
 
   const chipClass = (selected: boolean, disabled: boolean) => {
-    if (disabled) return 'bg-slate-100 text-slate-300 cursor-not-allowed line-through';
+    if (disabled) return 'bg-slate-100 dark:bg-slate-700 text-slate-300 dark:text-slate-600 cursor-not-allowed line-through';
     if (selected) return 'bg-gradient-to-r from-violet-400 to-sky-400 text-white';
-    return 'bg-slate-100 text-slate-600 hover:bg-violet-50 hover:text-violet-600';
+    return 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/40 hover:text-violet-600 dark:hover:text-violet-300';
   };
 
   return (
     <section
       aria-label="Schedule preferences"
-      className="bg-white/70 backdrop-blur-sm rounded-xl border border-slate-200 p-6 shadow-sm"
+      className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm"
     >
-      <h3 className="text-xl font-semibold text-slate-700">Schedule Preferences</h3>
+      <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-200">Schedule Preferences</h3>
 
       <div className="mt-4">
-        <p className="text-sm font-medium text-slate-600">Long run day</p>
+        <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Long run day</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {WEEKDAYS.map((day) => {
             const disabled = assumptions.unavailableDays.includes(day);
@@ -72,7 +72,7 @@ export function PlanAssumptionsEditor({ assumptions, trainingDays, onChange }: P
       </div>
 
       <div className="mt-4">
-        <p className="text-sm font-medium text-slate-600">Days you can't run</p>
+        <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Days you can't run</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {WEEKDAYS.map((day) => {
             const selected = assumptions.unavailableDays.includes(day);
@@ -84,8 +84,8 @@ export function PlanAssumptionsEditor({ assumptions, trainingDays, onChange }: P
                 aria-label={`${day} unavailable`}
                 className={`px-3 py-1 text-sm rounded-lg font-medium transition-colors ${
                   selected
-                    ? 'bg-rose-100 text-rose-600'
-                    : 'bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-500'
+                    ? 'bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-300'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-500 dark:hover:text-rose-300'
                 }`}
               >
                 {day.slice(0, 3)}
@@ -96,7 +96,7 @@ export function PlanAssumptionsEditor({ assumptions, trainingDays, onChange }: P
       </div>
 
       {tooFewDays && (
-        <p role="alert" className="mt-4 text-sm text-amber-600">
+        <p role="alert" className="mt-4 text-sm text-amber-600 dark:text-amber-300">
           Only {availableDays} days are available, but the plan needs {trainingDays} training days.
           Free up a weekday or reduce your training days.
         </p>

@@ -30,24 +30,24 @@ export class ErrorBoundary extends Component<Props, State> {
   render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <main className="min-h-screen bg-gradient-to-br from-rose-50 via-sky-50 to-violet-50 py-8 px-4">
+        <main className="min-h-screen bg-gradient-to-br from-rose-50 via-sky-50 to-violet-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 py-8 px-4">
           <div className="max-w-md mx-auto text-center">
-            <div className="bg-white/70 backdrop-blur-sm p-8 rounded-xl border border-slate-200 shadow-sm">
+            <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm p-8 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
               <div className="text-6xl mb-4" role="img" aria-label="Warning">
                 ⚠️
               </div>
-              <h1 className="text-2xl font-bold text-slate-700 mb-2">
+              <h1 className="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-2">
                 Something went wrong
               </h1>
-              <p className="text-slate-500 mb-6">
+              <p className="text-slate-500 dark:text-slate-400 mb-6">
                 An unexpected error occurred. Please try again.
               </p>
               {this.state.error && (
                 <details className="mb-6 text-left">
-                  <summary className="cursor-pointer text-sm text-slate-400 hover:text-slate-600">
+                  <summary className="cursor-pointer text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
                     Error details
                   </summary>
-                  <pre className="mt-2 p-3 bg-slate-100 rounded-lg text-xs text-slate-600 overflow-auto">
+                  <pre className="mt-2 p-3 bg-slate-100 dark:bg-slate-700 rounded-lg text-xs text-slate-600 dark:text-slate-300 overflow-auto">
                     {this.state.error.message}
                   </pre>
                 </details>

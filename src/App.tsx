@@ -10,6 +10,7 @@ import { PlanComparisonCard } from './components/PlanComparisonCard';
 import { PlanAssumptionsEditor } from './components/PlanAssumptionsEditor';
 import { SavedPlansList } from './components/SavedPlansList';
 import { UnitToggle } from './components/UnitToggle';
+import { ThemeToggle } from './components/ThemeToggle';
 import { generateTrainingPlan } from './utils/planGenerator';
 import { assessGoalFeasibility } from './utils/goalFeasibility';
 import { loadSavedPlans, savePlan, deleteSavedPlan, loadActivePlanId, storeActivePlanId } from './utils/planStorage';
@@ -172,8 +173,11 @@ function App() {
 
   if (activePlan) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-rose-50 via-sky-50 to-violet-50 py-8 px-4 print:bg-none print:bg-white">
-        <div className="max-w-4xl mx-auto">
+      <main className="min-h-screen bg-gradient-to-br from-rose-50 via-sky-50 to-violet-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 py-8 px-4 print:bg-none print:bg-white">
+        <div className="max-w-4xl mx-auto space-y-4">
+          <div className="flex justify-end print:hidden">
+            <ThemeToggle />
+          </div>
           {/* Keyed by plan id so switching plans reloads that plan's tracked progress. */}
           <TrainingPlanDisplay
             key={activePlan.id}
@@ -187,17 +191,18 @@ function App() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-rose-50 via-sky-50 to-violet-50 py-8 px-4">
+    <main className="min-h-screen bg-gradient-to-br from-rose-50 via-sky-50 to-violet-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 py-8 px-4">
       <div className="max-w-4xl mx-auto space-y-8">
         <header className="text-center">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-rose-400 via-violet-400 to-sky-400 bg-clip-text text-transparent">
             Runathon
           </h1>
-          <p className="mt-2 text-lg text-slate-500">
+          <p className="mt-2 text-lg text-slate-500 dark:text-slate-400">
             Generate your personalized running training plan
           </p>
-          <div className="mt-4 flex justify-center">
+          <div className="mt-4 flex flex-wrap justify-center gap-3">
             <UnitToggle unit={unit} onChange={handleUnitChange} />
+            <ThemeToggle />
           </div>
         </header>
 
@@ -242,7 +247,7 @@ function App() {
               onClick={() => setShowComparison(!showComparison)}
               aria-expanded={showComparison}
               aria-label={showComparison ? 'Hide the schedule comparison' : 'Compare 3 to 6 day schedules side by side'}
-              className="px-4 py-2 text-sm text-violet-600 hover:bg-violet-50 rounded-lg transition-colors font-medium"
+              className="px-4 py-2 text-sm text-violet-600 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/40 rounded-lg transition-colors font-medium"
             >
               {showComparison ? 'Hide Comparison' : 'Compare Schedules'}
             </button>
@@ -269,7 +274,7 @@ function App() {
             className={`px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-200 ${
               canGenerate
                 ? 'bg-gradient-to-r from-violet-400 to-sky-400 hover:from-violet-500 hover:to-sky-500 text-white shadow-lg hover:shadow-xl hover:scale-105'
-                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
             }`}
           >
             Generate Training Plan
@@ -277,13 +282,13 @@ function App() {
         </div>
 
         {hasValidPaces && targetNotFaster && (
-          <p role="alert" className="text-center text-amber-600 text-sm">
+          <p role="alert" className="text-center text-amber-600 dark:text-amber-300 text-sm">
             Target pace is not faster than your current pace. The plan will focus on maintenance unless you set a quicker goal.
           </p>
         )}
 
         {!selectedDistance && (
-          <p role="status" className="text-center text-slate-400 text-sm">
+          <p role="status" className="text-center text-slate-400 dark:text-slate-500 text-sm">
             Select a race distance to get started
           </p>
         )}

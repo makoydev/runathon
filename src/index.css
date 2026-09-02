@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Dark mode is driven by the `dark` class on <html> (see src/utils/theme.ts),
+   so an explicit user choice can override the OS preference. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 body {
   margin: 0;
   min-height: 100vh;
