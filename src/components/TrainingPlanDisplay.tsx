@@ -26,6 +26,7 @@ import { summarizeProgress } from '../utils/progressSummary';
 import { buildShareUrl } from '../utils/planShare';
 import { applyWeekAdjustments, nextFeedbackWeek } from '../utils/weekAdjustment';
 import { firstOpenWeek, weekCompletion } from '../utils/planView';
+import { ratioShortLabel } from '../utils/runWalk';
 import { ProgressSummaryCard } from './ProgressSummaryCard';
 import { WeekCheckInCard } from './WeekCheckInCard';
 import { WeekOverviewChart } from './plan/WeekOverviewChart';
@@ -117,6 +118,9 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
     { label: 'Duration', value: `${info.weeks} weeks` },
     { label: 'Training Days', value: `${plan.trainingDays} days/week` },
   ];
+  if (plan.runWalk) {
+    stats.push({ label: 'Run / Walk', value: ratioShortLabel(plan.runWalk) });
+  }
   if (plan.currentWeeklyMileage) {
     stats.push({ label: 'Current Load', value: `${formatDistanceInUnit(plan.currentWeeklyMileage, unit)}/week` });
   }

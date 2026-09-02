@@ -11,6 +11,8 @@ import { PlanAssumptionsEditor } from './components/PlanAssumptionsEditor';
 import { SavedPlansList } from './components/SavedPlansList';
 import { UnitToggle } from './components/UnitToggle';
 import { ThemeToggle } from './components/ThemeToggle';
+import { TrainingMethodSelector, resolveRunWalkRatio } from './components/TrainingMethodSelector';
+import type { RunWalkChoice } from './components/TrainingMethodSelector';
 import { generateTrainingPlan } from './utils/planGenerator';
 import { assessGoalFeasibility } from './utils/goalFeasibility';
 import { loadSavedPlans, savePlan, deleteSavedPlan, loadActivePlanId, storeActivePlanId } from './utils/planStorage';
@@ -20,7 +22,7 @@ import { decodeShareParams, sameInputs } from './utils/planShare';
 import { comparePlanOptions } from './utils/planComparison';
 import { applyPlanAssumptions, maxTrainingDays, DEFAULT_ASSUMPTIONS } from './utils/planAssumptions';
 import { loadUnit, storeUnit, convertPace, unitToKm, kmToUnit } from './utils/units';
-import type { RaceDistance, Pace, ExperienceLevel, DistanceUnit, PlanAssumptions } from './types';
+import type { RaceDistance, Pace, ExperienceLevel, DistanceUnit, PlanAssumptions, TrainingMethod } from './types';
 
 // Form defaults, expressed in km and converted for display when miles are active.
 const DEFAULTS = {
@@ -49,7 +51,8 @@ function importSharedPlan(): void {
       inputs.currentWeeklyMileage ?? 0,
       inputs.longestRecentRun ?? 0,
       inputs.experienceLevel,
-      inputs.unit
+      inputs.unit,
+      inputs.runWalk ?? null
     ),
     inputs.assumptions
   );
@@ -72,6 +75,8 @@ function App() {
   const [trainingDays, setTrainingDays] = useState<number>(5);
   const [showComparison, setShowComparison] = useState(false);
   const [assumptions, setAssumptions] = useState<PlanAssumptions>(DEFAULT_ASSUMPTIONS);
+  const [method, setMethod] = useState<TrainingMethod>('continuous');
+  const [runWalkChoice, setRunWalkChoice] = useState<RunWalkChoice>('auto');
   // The share-link import runs inside this initializer so the saved list and
   // the active-plan initializer below both see its result on first render.
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
@@ -105,13 +110,15 @@ function App() {
   const targetPaceKm = convertPace(targetPace, unit, 'km');
   const weeklyMileageKm = unitToKm(currentWeeklyMileage, unit);
   const longestRunKm = unitToKm(longestRecentRun, unit);
+  const currentPaceSeconds = currentPaceKm.minutes * 60 + currentPaceKm.seconds;
+  const runWalk = method === 'runwalk' ? resolveRunWalkRatio(runWalkChoice, currentPaceSeconds) : null;
 
   const feasibility = canGenerate
     ? assessGoalFeasibility(selectedDistance, currentPaceKm, targetPaceKm, weeklyMileageKm, longestRunKm, unit)
     : null;
 
   const comparisonOptions = showComparison && canGenerate
-    ? comparePlanOptions(selectedDistance, currentPaceKm, targetPaceKm, weeklyMileageKm, longestRunKm, experienceLevel, unit)
+    ? comparePlanOptions(selectedDistance, currentPaceKm, targetPaceKm, weeklyMileageKm, longestRunKm, experienceLevel, unit, runWalk)
     : null;
 
   const handleUnitChange = (nextUnit: DistanceUnit) => {
@@ -135,7 +142,8 @@ function App() {
         weeklyMileageKm,
         longestRunKm,
         experienceLevel,
-        unit
+        unit,
+        runWalk
       ),
       assumptions
     );
@@ -169,6 +177,8 @@ function App() {
     setExperienceLevel('intermediate');
     setTrainingDays(5);
     setAssumptions(DEFAULT_ASSUMPTIONS);
+    setMethod('continuous');
+    setRunWalkChoice('auto');
   };
 
   if (activePlan) {
@@ -234,6 +244,14 @@ function App() {
             />
 
             <ExperienceLevelSelector experienceLevel={experienceLevel} onChange={setExperienceLevel} />
+
+            <TrainingMethodSelector
+              method={method}
+              ratioChoice={runWalkChoice}
+              currentPaceSecondsPerKm={currentPaceSeconds}
+              onMethodChange={setMethod}
+              onRatioChange={setRunWalkChoice}
+            />
 
             <TrainingDaysSelector trainingDays={trainingDays} onChange={setTrainingDays} />
 
