@@ -1,6 +1,7 @@
 import type { RaceDistance, Pace, DistanceUnit } from '../types';
 import { DISTANCE_INFO } from '../types';
 import { formatDistanceInUnit } from './units';
+import { peakWeeklyMileage, peakLongRun } from './trainingTargets';
 
 export type FeasibilityRating = 'conservative' | 'moderate' | 'aggressive' | 'high-risk';
 
@@ -10,15 +11,6 @@ export interface GoalFeasibility {
 }
 
 const RATING_ORDER: FeasibilityRating[] = ['conservative', 'moderate', 'aggressive', 'high-risk'];
-
-// Peak weekly volume a runner should roughly reach for each race distance,
-// used to judge how far their current mileage is from race readiness.
-const TARGET_PEAK_MILEAGE: Record<RaceDistance, number> = {
-  '5k': 25,
-  '10k': 35,
-  'half': 45,
-  'full': 60,
-};
 
 function paceToSeconds(pace: Pace): number {
   return Math.max(0, pace.minutes * 60 + pace.seconds);
@@ -39,6 +31,9 @@ export function assessGoalFeasibility(
   unit: DistanceUnit = 'km'
 ): GoalFeasibility {
   const info = DISTANCE_INFO[distance];
+  // Judged against what the generated plan will actually ask for at its peak.
+  const targetPeakMileage = peakWeeklyMileage(distance);
+  const targetLongRun = peakLongRun(distance);
   const reasons: string[] = [];
   const ratings: FeasibilityRating[] = [];
   const fmt = (km: number) => formatDistanceInUnit(km, unit);
@@ -68,35 +63,36 @@ export function assessGoalFeasibility(
 
   // Mileage readiness: how much weekly volume must grow to reach a typical peak.
   if (currentWeeklyMileage > 0) {
-    const mileageRatio = TARGET_PEAK_MILEAGE[distance] / currentWeeklyMileage;
+    const mileageRatio = targetPeakMileage / currentWeeklyMileage;
     if (mileageRatio <= 1.5) {
       ratings.push('conservative');
     } else if (mileageRatio <= 2.5) {
       ratings.push('moderate');
-      reasons.push(`Weekly mileage needs to grow from ${fmt(currentWeeklyMileage)} toward ~${fmt(TARGET_PEAK_MILEAGE[distance])}, a manageable but real build.`);
+      reasons.push(`Weekly mileage needs to grow from ${fmt(currentWeeklyMileage)} toward ~${fmt(targetPeakMileage)}, a manageable but real build.`);
     } else if (mileageRatio <= 3.5) {
       ratings.push('aggressive');
-      reasons.push(`Weekly mileage must roughly triple from ${fmt(currentWeeklyMileage)} toward ~${fmt(TARGET_PEAK_MILEAGE[distance])}, which is a steep build for this timeline.`);
+      reasons.push(`Weekly mileage must roughly triple from ${fmt(currentWeeklyMileage)} toward ~${fmt(targetPeakMileage)}, which is a steep build for this timeline.`);
     } else {
       ratings.push('high-risk');
-      reasons.push(`Weekly mileage of ${fmt(currentWeeklyMileage)} is far below the ~${fmt(TARGET_PEAK_MILEAGE[distance])} typically needed - the required ramp risks injury.`);
+      reasons.push(`Weekly mileage of ${fmt(currentWeeklyMileage)} is far below the ~${fmt(targetPeakMileage)} typically needed - the required ramp risks injury.`);
     }
   }
 
-  // Long-run readiness: how far the race distance is beyond the longest recent run.
+  // Long-run readiness: how far the plan's peak long run is beyond the longest recent run.
   if (longestRecentRun > 0) {
-    const longRunRatio = info.km / longestRecentRun;
-    if (longRunRatio <= 1.5) {
+    const longRunRatio = targetLongRun / longestRecentRun;
+    const buildNote = `the plan builds your long run to ~${fmt(targetLongRun)} for the ${fmt(info.km)} race`;
+    if (longRunRatio <= 1.75) {
       ratings.push('conservative');
     } else if (longRunRatio <= 2.5) {
       ratings.push('moderate');
-      reasons.push(`Race distance (${fmt(info.km)}) is well beyond your longest recent run (${fmt(longestRecentRun)}); the long-run progression will matter.`);
+      reasons.push(`Your longest recent run (${fmt(longestRecentRun)}) has room to grow; ${buildNote}.`);
     } else if (longRunRatio <= 4) {
       ratings.push('aggressive');
-      reasons.push(`Your longest recent run (${fmt(longestRecentRun)}) is a small fraction of race distance (${fmt(info.km)}), so endurance is the main constraint.`);
+      reasons.push(`Your longest recent run (${fmt(longestRecentRun)}) is a small fraction of what you will need; ${buildNote}, so endurance is the main constraint.`);
     } else {
       ratings.push('high-risk');
-      reasons.push(`Your longest recent run (${fmt(longestRecentRun)}) is very short compared to the race (${fmt(info.km)}) - building that endurance safely may need more weeks than this plan has.`);
+      reasons.push(`Your longest recent run (${fmt(longestRecentRun)}) is very short for this goal; ${buildNote}, and building that safely may need more weeks than this plan has.`);
     }
   }
 
