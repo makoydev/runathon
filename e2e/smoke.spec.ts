@@ -91,3 +91,23 @@ test('renders without horizontal overflow', async ({ page }) => {
   await page.getByRole('button', { name: 'Expand all weeks' }).click();
   await noHorizontalScroll();
 });
+
+test('switches to dark mode and remembers the choice', async ({ page }) => {
+  await page.goto('/');
+  const html = page.locator('html');
+  await expect(html).not.toHaveClass(/dark/);
+
+  await page.getByRole('button', { name: 'Use dark theme' }).click();
+  await expect(html).toHaveClass(/dark/);
+  await expect(page.getByRole('button', { name: 'Use dark theme' })).toHaveAttribute('aria-pressed', 'true');
+
+  // The preference persists and is applied before the app renders.
+  await page.reload();
+  await expect(html).toHaveClass(/dark/);
+
+  // It carries over to the plan view, and switching back clears it.
+  await generatePlan(page);
+  await expect(html).toHaveClass(/dark/);
+  await page.getByRole('button', { name: 'Use light theme' }).click();
+  await expect(html).not.toHaveClass(/dark/);
+});
