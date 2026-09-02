@@ -23,7 +23,7 @@ export function WorkoutLogControls({ label, entry, onChange }: WorkoutLogControl
   const rpeValues = Array.from({ length: MAX_RPE - MIN_RPE + 1 }, (_, i) => MIN_RPE + i);
 
   return (
-    <div className="flex flex-col sm:flex-row gap-2 mt-2 md:ml-[96px] print:hidden">
+    <div className="flex flex-col gap-2 mt-1 print:hidden">
       <label className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
         Effort
         <select

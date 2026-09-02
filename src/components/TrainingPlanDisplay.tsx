@@ -1,4 +1,6 @@
-import type { TrainingPlan, TrainingWeek } from '../types';
+import type { KeyboardEvent } from 'react';
+import { useState } from 'react';
+import type { TrainingPlan } from '../types';
 import { DISTANCE_INFO } from '../types';
 import { downloadCalendar } from '../utils/calendarExport';
 import { formatPaceInUnit, formatDistanceInUnit } from '../utils/units';
@@ -23,10 +25,13 @@ import type {
 import { summarizeProgress } from '../utils/progressSummary';
 import { buildShareUrl } from '../utils/planShare';
 import { applyWeekAdjustments, nextFeedbackWeek } from '../utils/weekAdjustment';
+import { firstOpenWeek, weekCompletion } from '../utils/planView';
 import { ProgressSummaryCard } from './ProgressSummaryCard';
 import { WeekCheckInCard } from './WeekCheckInCard';
-import { WorkoutLogControls } from './WorkoutLogControls';
-import { useState } from 'react';
+import { WeekOverviewChart } from './plan/WeekOverviewChart';
+import { WeekNavigator } from './plan/WeekNavigator';
+import { DayCard } from './plan/DayCard';
+import { PrintSchedule } from './plan/PrintSchedule';
 
 interface TrainingPlanDisplayProps {
   plan: TrainingPlan;
@@ -34,171 +39,15 @@ interface TrainingPlanDisplayProps {
   onReset: () => void;
 }
 
-interface WeekCardProps {
-  week: TrainingWeek;
-  isExpanded: boolean;
-  onToggle: () => void;
-  progress: PlanProgress;
-  onStatusToggle: (key: string, status: WorkoutStatus) => void;
-  log: PlanWorkoutLog;
-  onLogChange: (key: string, entry: WorkoutLogEntry) => void;
-}
-
-function WeekCard({ week, isExpanded, onToggle, progress, onStatusToggle, log, onLogChange }: WeekCardProps) {
-  const phaseColors: Record<string, string> = {
-    'Base Building': 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300',
-    'Build Phase': 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300',
-    'Peak Training': 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300',
-    'Taper': 'bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300',
-  };
-
-  const contentId = `week-${week.week}-content`;
-
-  return (
-    <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm print:break-inside-avoid print:shadow-none">
-      <button
-        onClick={onToggle}
-        aria-expanded={isExpanded}
-        aria-controls={contentId}
-        aria-label={`Week ${week.week}, ${week.phase}${week.isCutback ? ', cutback week' : ''}${week.adjustmentNote ? ', adjusted' : ''}, ${week.totalMileage}. Click to ${isExpanded ? 'collapse' : 'expand'} details.`}
-        className="w-full p-4 flex items-center justify-between hover:bg-white/50 dark:hover:bg-slate-700/50 transition-colors"
-      >
-        <div className="flex items-center gap-4">
-          <span className="text-2xl font-bold text-slate-700 dark:text-slate-200">Week {week.week}</span>
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${phaseColors[week.phase] || 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}`}>
-            {week.phase}
-          </span>
-          {week.isCutback && (
-            <span
-              className="px-3 py-1 rounded-full text-sm font-medium bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300"
-              title="Reduced volume this week so your body absorbs the training"
-            >
-              Cutback
-            </span>
-          )}
-          {week.adjustmentNote && (
-            <span
-              className="px-3 py-1 rounded-full text-sm font-medium bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300"
-              title={week.adjustmentNote}
-            >
-              Adjusted
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-slate-500 dark:text-slate-400">{week.totalMileage}</span>
-          <svg
-            className={`w-5 h-5 text-slate-400 dark:text-slate-500 transition-transform print:hidden ${isExpanded ? 'rotate-180' : ''}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            aria-hidden="true"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-      </button>
-
-      {/* Collapsed weeks stay in the DOM (hidden) so printing always includes the full schedule. */}
-      <div
-        id={contentId}
-        role="region"
-        aria-label={`Week ${week.week} schedule`}
-        className={`border-t border-slate-100 dark:border-slate-700 print:block ${isExpanded ? '' : 'hidden'}`}
-      >
-          {week.adjustmentNote && (
-            <p className="px-4 py-2 text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border-b border-amber-100 dark:border-amber-800">
-              {week.adjustmentNote}
-            </p>
-          )}
-          {week.days.map((day, idx) => {
-            const isTrackable = Boolean(day.dayType && day.dayType !== 'rest');
-            const status = isTrackable ? progress[dayKey(week.week, idx)] : undefined;
-            return (
-            <div
-              key={day.day}
-              className={`p-4 ${idx !== week.days.length - 1 ? 'border-b border-slate-100 dark:border-slate-700' : ''} ${
-                day.workout.includes('RACE DAY') ? 'bg-gradient-to-r from-violet-50 to-rose-50 dark:from-violet-900/40 dark:to-rose-900/40' : ''
-              } ${status === 'skipped' ? 'opacity-60' : ''}`}
-            >
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium text-slate-500 dark:text-slate-400 w-24">{day.day}</span>
-                    <span className={`font-semibold ${day.workout.includes('RACE DAY') ? 'text-violet-600 dark:text-violet-300 text-lg' : 'text-slate-700 dark:text-slate-200'} ${status === 'skipped' ? 'line-through' : ''}`}>
-                      {day.workout}
-                    </span>
-                    {status === 'completed' && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 print:hidden">
-                        Done
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 md:ml-[96px]">{day.description}</p>
-                  {status !== undefined && (
-                    <WorkoutLogControls
-                      label={`week ${week.week} ${day.day} ${day.workout}`}
-                      entry={log[dayKey(week.week, idx)]}
-                      onChange={(entry) => onLogChange(dayKey(week.week, idx), entry)}
-                    />
-                  )}
-                </div>
-                <div className="flex items-center gap-4 text-sm">
-                  {day.pace && (
-                    <span className="px-3 py-1 bg-violet-50 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 rounded-lg font-mono">
-                      {day.pace}
-                    </span>
-                  )}
-                  {day.distance && (
-                    <span className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg">
-                      {day.distance}
-                    </span>
-                  )}
-                  {isTrackable && (
-                    <div className="flex gap-1 print:hidden">
-                      <button
-                        onClick={() => onStatusToggle(dayKey(week.week, idx), 'completed')}
-                        aria-pressed={status === 'completed'}
-                        aria-label={`Mark week ${week.week} ${day.day} ${day.workout} as completed`}
-                        title={status === 'completed' ? 'Unmark as completed' : 'Mark as completed'}
-                        className={`px-2 py-1 rounded-lg transition-colors ${
-                          status === 'completed'
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:text-emerald-700 dark:hover:text-emerald-300'
-                        }`}
-                      >
-                        ✓
-                      </button>
-                      <button
-                        onClick={() => onStatusToggle(dayKey(week.week, idx), 'skipped')}
-                        aria-pressed={status === 'skipped'}
-                        aria-label={`Mark week ${week.week} ${day.day} ${day.workout} as skipped`}
-                        title={status === 'skipped' ? 'Unmark as skipped' : 'Mark as skipped'}
-                        className={`px-2 py-1 rounded-lg transition-colors ${
-                          status === 'skipped'
-                            ? 'bg-slate-500 text-white'
-                            : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-700 dark:hover:text-slate-200'
-                        }`}
-                      >
-                        ✗
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            );
-          })}
-      </div>
-    </div>
-  );
-}
+const ACTION_BUTTON =
+  'px-3 py-1.5 text-sm font-medium rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors print:hidden';
 
 export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDisplayProps) {
-  const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set([1]));
   const [progress, setProgress] = useState<PlanProgress>(() => loadPlanProgress(planId));
   const [feedback, setFeedback] = useState<PlanWeekFeedback>(() => loadWeekFeedback(planId));
   const [log, setLog] = useState<PlanWorkoutLog>(() => loadWorkoutLog(planId));
+  // Open on the week the runner is up to, not always week 1.
+  const [selectedWeek, setSelectedWeek] = useState<number>(() => firstOpenWeek(plan, loadPlanProgress(planId)));
   const [shareCopied, setShareCopied] = useState(false);
   const info = DISTANCE_INFO[plan.distance];
   const unit = plan.unit ?? 'km';
@@ -207,14 +56,23 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
   const effectivePlan = applyWeekAdjustments(plan, feedback, progress);
   const summary = summarizeProgress(effectivePlan, progress);
   const checkInWeek = nextFeedbackWeek(effectivePlan, progress, feedback);
+  const totalWeeks = effectivePlan.weeks.length;
+  const week = effectivePlan.weeks.find((candidate) => candidate.week === selectedWeek) ?? effectivePlan.weeks[0];
+  const completion = weekCompletion(week, progress);
+
+  const goToWeek = (target: number) => {
+    setSelectedWeek(Math.min(totalWeeks, Math.max(1, target)));
+  };
 
   const handleStatusToggle = (key: string, status: WorkoutStatus) => {
     // Clicking the active status again clears the mark.
     setProgress(setWorkoutStatus(planId, key, progress[key] === status ? null : status));
   };
 
-  const handleCheckInAnswer = (week: number, answer: WeekFeedback) => {
-    setFeedback(setWeekFeedback(planId, week, answer));
+  const handleCheckInAnswer = (checkedWeek: number, answer: WeekFeedback) => {
+    setFeedback(setWeekFeedback(planId, checkedWeek, answer));
+    // The week is wrapped up, so move on to the one it may have adjusted.
+    goToWeek(checkedWeek + 1);
   };
 
   const handleLogChange = (key: string, entry: WorkoutLogEntry) => {
@@ -226,6 +84,7 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
     setProgress({});
     setFeedback({});
     setLog({});
+    goToWeek(1);
   };
 
   // Sharing encodes the plan inputs; the recipient's app regenerates the plan.
@@ -240,75 +99,66 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
     }
   };
 
-  const toggleWeek = (week: number) => {
-    const newExpanded = new Set(expandedWeeks);
-    if (newExpanded.has(week)) {
-      newExpanded.delete(week);
-    } else {
-      newExpanded.add(week);
+  // Arrow keys page through weeks unless the runner is typing in a field.
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName)) return;
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      goToWeek(selectedWeek - 1);
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      goToWeek(selectedWeek + 1);
     }
-    setExpandedWeeks(newExpanded);
   };
 
-  const expandAll = () => {
-    setExpandedWeeks(new Set(plan.weeks.map((w) => w.week)));
-  };
-
-  const collapseAll = () => {
-    setExpandedWeeks(new Set());
-  };
+  const stats: Array<{ label: string; value: string }> = [
+    { label: 'Pace', value: `${formatPaceInUnit(plan.currentPace, unit)} → ${formatPaceInUnit(plan.targetPace, unit)}` },
+    { label: 'Duration', value: `${info.weeks} weeks` },
+    { label: 'Training Days', value: `${plan.trainingDays} days/week` },
+  ];
+  if (plan.currentWeeklyMileage) {
+    stats.push({ label: 'Current Load', value: `${formatDistanceInUnit(plan.currentWeeklyMileage, unit)}/week` });
+  }
+  if (plan.longestRecentRun) {
+    stats.push({ label: 'Longest Recent Run', value: formatDistanceInUnit(plan.longestRecentRun, unit) });
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-r from-violet-400 via-rose-300 to-sky-400 rounded-2xl p-6 text-white shadow-lg print:bg-none print:bg-white print:text-slate-800 print:border print:border-slate-300 print:shadow-none">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h2 className="text-3xl font-bold">{info.name} Training Plan</h2>
-            <p className="text-white/80 mt-2 print:text-slate-600">{plan.summary}</p>
+    <div className="space-y-5">
+      <div className="bg-gradient-to-r from-violet-500 via-rose-400 to-sky-500 rounded-2xl p-5 sm:p-6 text-white shadow-lg print:bg-none print:bg-white print:text-slate-800 print:border print:border-slate-300 print:shadow-none">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="text-2xl sm:text-3xl font-bold">{info.name} Training Plan</h2>
+            <details className="mt-2 text-sm text-white/85 print:text-slate-600 print:open">
+              <summary className="cursor-pointer select-none font-medium print:hidden">Plan notes</summary>
+              <p className="mt-2 max-w-2xl">{plan.summary}</p>
+            </details>
           </div>
-          <button
-            onClick={onReset}
-            aria-label="Create a new training plan"
-            className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors font-medium print:hidden"
-          >
-            Create New Plan
-          </button>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <button onClick={handleShare} aria-label="Copy a shareable link to this plan" title="Copies a link that opens this plan for anyone" className={ACTION_BUTTON}>
+              {shareCopied ? 'Link Copied!' : 'Share'}
+            </button>
+            <button onClick={() => downloadCalendar(effectivePlan)} aria-label="Export plan as a calendar file, starting next Monday" title="Downloads an .ics file with the plan starting next Monday" className={ACTION_BUTTON}>
+              Export .ics
+            </button>
+            <button onClick={() => window.print()} aria-label="Print this training plan" className={ACTION_BUTTON}>
+              Print
+            </button>
+            <button onClick={onReset} aria-label="Create a new training plan" className="px-3 py-1.5 text-sm font-semibold rounded-lg bg-white text-violet-600 hover:bg-violet-50 transition-colors print:hidden">
+              New Plan
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/20 print:border-slate-200">
-          <div>
-            <div className="text-sm text-white/70 print:text-slate-500">Current Pace</div>
-            <div className="text-xl font-bold font-mono">
-              {formatPaceInUnit(plan.currentPace, unit)}
+        <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-3 mt-5 pt-4 border-t border-white/20 print:border-slate-200">
+          {stats.map((stat) => (
+            <div key={stat.label} className="min-w-0">
+              <dt className="text-xs uppercase tracking-wide text-white/70 print:text-slate-500">{stat.label}</dt>
+              <dd className="text-base sm:text-lg font-bold font-mono break-words">{stat.value}</dd>
             </div>
-          </div>
-          <div>
-            <div className="text-sm text-white/70 print:text-slate-500">Target Pace</div>
-            <div className="text-xl font-bold font-mono">
-              {formatPaceInUnit(plan.targetPace, unit)}
-            </div>
-          </div>
-          <div>
-            <div className="text-sm text-white/70 print:text-slate-500">Duration</div>
-            <div className="text-xl font-bold">{info.weeks} weeks</div>
-          </div>
-          <div>
-            <div className="text-sm text-white/70 print:text-slate-500">Training Days</div>
-            <div className="text-xl font-bold">{plan.trainingDays} days/week</div>
-          </div>
-          {plan.currentWeeklyMileage && (
-            <div>
-              <div className="text-sm text-white/70 print:text-slate-500">Current Load</div>
-              <div className="text-xl font-bold">{formatDistanceInUnit(plan.currentWeeklyMileage, unit)}/week</div>
-            </div>
-          )}
-          {plan.longestRecentRun && (
-            <div>
-              <div className="text-sm text-white/70 print:text-slate-500">Longest Recent Run</div>
-              <div className="text-xl font-bold">{formatDistanceInUnit(plan.longestRecentRun, unit)}</div>
-            </div>
-          )}
-        </div>
+          ))}
+        </dl>
       </div>
 
       <ProgressSummaryCard summary={summary} unit={unit} onResetProgress={handleResetProgress} />
@@ -317,64 +167,53 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
         <WeekCheckInCard week={checkInWeek} onAnswer={(answer) => handleCheckInAnswer(checkInWeek, answer)} />
       )}
 
-      {/* Stack and wrap on small screens so the buttons never overlap. */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-        <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-200">Weekly Schedule</h3>
-        <div className="flex flex-wrap gap-2 print:hidden">
-          <button
-            onClick={handleShare}
-            aria-label="Copy a shareable link to this plan"
-            title="Copies a link that opens this plan for anyone"
-            className="px-3 py-1 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-          >
-            {shareCopied ? 'Link Copied!' : 'Share Link'}
-          </button>
-          <button
-            onClick={() => downloadCalendar(effectivePlan)}
-            aria-label="Export plan as a calendar file, starting next Monday"
-            title="Downloads an .ics file with the plan starting next Monday"
-            className="px-3 py-1 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-          >
-            Export .ics
-          </button>
-          <button
-            onClick={() => window.print()}
-            aria-label="Print this training plan"
-            className="px-3 py-1 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-          >
-            Print
-          </button>
-          <button
-            onClick={expandAll}
-            aria-label="Expand all weeks"
-            className="px-3 py-1 text-sm text-violet-600 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/40 rounded-lg transition-colors"
-          >
-            Expand All
-          </button>
-          <button
-            onClick={collapseAll}
-            aria-label="Collapse all weeks"
-            className="px-3 py-1 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-          >
-            Collapse All
-          </button>
-        </div>
-      </div>
+      <WeekOverviewChart
+        weeks={effectivePlan.weeks}
+        progress={progress}
+        selectedWeek={week.week}
+        unit={unit}
+        onSelect={goToWeek}
+      />
 
-      <div className="space-y-4">
-        {effectivePlan.weeks.map((week) => (
-          <WeekCard
-            key={week.week}
-            week={week}
-            isExpanded={expandedWeeks.has(week.week)}
-            onToggle={() => toggleWeek(week.week)}
-            progress={progress}
-            onStatusToggle={handleStatusToggle}
-            log={log}
-            onLogChange={handleLogChange}
-          />
-        ))}
-      </div>
+      <section aria-label="Weekly schedule" onKeyDown={handleKeyDown} className="space-y-4 print:hidden">
+        <WeekNavigator
+          week={week}
+          totalWeeks={totalWeeks}
+          completion={completion}
+          onPrev={() => goToWeek(week.week - 1)}
+          onNext={() => goToWeek(week.week + 1)}
+        />
+        {week.adjustmentNote && (
+          <p className="px-4 py-2 text-sm rounded-lg text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-100 dark:border-amber-800">
+            {week.adjustmentNote}
+          </p>
+        )}
+        <div
+          role="region"
+          aria-label={`Week ${week.week} schedule`}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+        >
+          {week.days.map((day, index) => {
+            const key = dayKey(week.week, index);
+            return (
+              <DayCard
+                key={`${week.week}-${day.day}`}
+                weekNumber={week.week}
+                day={day}
+                status={progress[key]}
+                logEntry={log[key]}
+                onStatusToggle={(status) => handleStatusToggle(key, status)}
+                onLogChange={(entry) => handleLogChange(key, entry)}
+              />
+            );
+          })}
+        </div>
+        <p className="text-xs text-center text-slate-400 dark:text-slate-500">
+          Tip: use ← → to move between weeks, or click a bar in the overview.
+        </p>
+      </section>
+
+      <PrintSchedule plan={effectivePlan} />
     </div>
   );
 }

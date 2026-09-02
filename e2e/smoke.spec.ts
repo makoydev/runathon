@@ -16,26 +16,29 @@ test('generates a plan from the form', async ({ page }) => {
 
   await generatePlan(page);
 
-  await expect(page.getByText('Weekly Schedule')).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Week 1,/ })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Week 1 schedule' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Week 1,/ })).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('expands and collapses weeks', async ({ page }) => {
+test('moves between weeks without scrolling the whole plan', async ({ page }) => {
   await generatePlan(page);
 
-  // Week 1 starts expanded; week 2 starts collapsed.
+  // Only one week is on screen at a time; the plan opens on week 1.
   await expect(page.getByRole('region', { name: 'Week 1 schedule' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Week 2 schedule' })).toBeHidden();
+  await expect(page.getByRole('region', { name: 'Week 2 schedule' })).toHaveCount(0);
 
-  await page.getByRole('button', { name: /^Week 2,/ }).click();
+  await page.getByRole('button', { name: 'Next week' }).click();
   await expect(page.getByRole('region', { name: 'Week 2 schedule' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Collapse all weeks' }).click();
-  await expect(page.getByRole('region', { name: 'Week 1 schedule' })).toBeHidden();
-  await expect(page.getByRole('region', { name: 'Week 2 schedule' })).toBeHidden();
-
-  await page.getByRole('button', { name: 'Expand all weeks' }).click();
+  // The overview chart doubles as a week picker.
+  await page.getByRole('button', { name: /^Week 8,/ }).click();
   await expect(page.getByRole('region', { name: 'Week 8 schedule' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Next week' })).toBeDisabled();
+
+  // Arrow keys page through weeks while focus is inside the schedule.
+  await page.getByRole('button', { name: 'Previous week' }).focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.getByRole('region', { name: 'Week 7 schedule' })).toBeVisible();
 });
 
 test('resets back to the form and keeps the saved plan', async ({ page }) => {
@@ -88,7 +91,8 @@ test('renders without horizontal overflow', async ({ page }) => {
   await noHorizontalScroll();
 
   await generatePlan(page);
-  await page.getByRole('button', { name: 'Expand all weeks' }).click();
+  await noHorizontalScroll();
+  await page.getByRole('button', { name: /^Week 8,/ }).click();
   await noHorizontalScroll();
 });
 
