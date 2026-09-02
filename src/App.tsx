@@ -174,7 +174,7 @@ function App() {
   if (activePlan) {
     return (
       <main className="min-h-screen bg-gradient-to-br from-rose-50 via-sky-50 to-violet-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 py-8 px-4 print:bg-none print:bg-white">
-        <div className="max-w-4xl mx-auto space-y-4">
+        <div className="max-w-5xl mx-auto space-y-4">
           <div className="flex justify-end print:hidden">
             <ThemeToggle />
           </div>
@@ -192,7 +192,7 @@ function App() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-rose-50 via-sky-50 to-violet-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 py-8 px-4">
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto">
         <header className="text-center">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-rose-400 via-violet-400 to-sky-400 bg-clip-text text-transparent">
             Runathon
@@ -206,94 +206,99 @@ function App() {
           </div>
         </header>
 
-        <DistanceSelector selected={selectedDistance} onSelect={setSelectedDistance} />
+        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+          <div className="space-y-6 min-w-0">
+            <DistanceSelector selected={selectedDistance} onSelect={setSelectedDistance} />
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <PaceInput
-            label="Current Pace"
-            description={`Your current average pace per ${unit === 'mi' ? 'mile' : 'kilometer'}`}
-            pace={currentPace}
-            onChange={setCurrentPace}
-          />
-          <PaceInput
-            label="Target Pace"
-            description={`Your goal pace per ${unit === 'mi' ? 'mile' : 'kilometer'} for race day`}
-            pace={targetPace}
-            onChange={setTargetPace}
-          />
-        </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              <PaceInput
+                label="Current Pace"
+                description={`Your current average pace per ${unit === 'mi' ? 'mile' : 'kilometer'}`}
+                pace={currentPace}
+                onChange={setCurrentPace}
+              />
+              <PaceInput
+                label="Target Pace"
+                description={`Your goal pace per ${unit === 'mi' ? 'mile' : 'kilometer'} for race day`}
+                pace={targetPace}
+                onChange={setTargetPace}
+              />
+            </div>
 
-        <CurrentLoadInputs
-          currentWeeklyMileage={currentWeeklyMileage}
-          longestRecentRun={longestRecentRun}
-          unit={unit}
-          onCurrentWeeklyMileageChange={setCurrentWeeklyMileage}
-          onLongestRecentRunChange={setLongestRecentRun}
-        />
+            <CurrentLoadInputs
+              currentWeeklyMileage={currentWeeklyMileage}
+              longestRecentRun={longestRecentRun}
+              unit={unit}
+              onCurrentWeeklyMileageChange={setCurrentWeeklyMileage}
+              onLongestRecentRunChange={setLongestRecentRun}
+            />
 
-        <ExperienceLevelSelector experienceLevel={experienceLevel} onChange={setExperienceLevel} />
+            <ExperienceLevelSelector experienceLevel={experienceLevel} onChange={setExperienceLevel} />
 
-        <TrainingDaysSelector trainingDays={trainingDays} onChange={setTrainingDays} />
+            <TrainingDaysSelector trainingDays={trainingDays} onChange={setTrainingDays} />
 
-        <PlanAssumptionsEditor
-          assumptions={assumptions}
-          trainingDays={trainingDays}
-          onChange={setAssumptions}
-        />
+            <PlanAssumptionsEditor
+              assumptions={assumptions}
+              trainingDays={trainingDays}
+              onChange={setAssumptions}
+            />
 
-        {canGenerate && (
-          <div className="flex justify-center">
-            <button
-              onClick={() => setShowComparison(!showComparison)}
-              aria-expanded={showComparison}
-              aria-label={showComparison ? 'Hide the schedule comparison' : 'Compare 3 to 6 day schedules side by side'}
-              className="px-4 py-2 text-sm text-violet-600 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/40 rounded-lg transition-colors font-medium"
-            >
-              {showComparison ? 'Hide Comparison' : 'Compare Schedules'}
-            </button>
+            {canGenerate && (
+              <div className="flex justify-center">
+                <button
+                  onClick={() => setShowComparison(!showComparison)}
+                  aria-expanded={showComparison}
+                  aria-label={showComparison ? 'Hide the schedule comparison' : 'Compare 3 to 6 day schedules side by side'}
+                  className="px-4 py-2 text-sm text-violet-600 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/40 rounded-lg transition-colors font-medium"
+                >
+                  {showComparison ? 'Hide Comparison' : 'Compare Schedules'}
+                </button>
+              </div>
+            )}
+
+            {comparisonOptions && (
+              <PlanComparisonCard
+                options={comparisonOptions}
+                selectedDays={trainingDays}
+                unit={unit}
+                onSelect={setTrainingDays}
+              />
+            )}
           </div>
-        )}
 
-        {comparisonOptions && (
-          <PlanComparisonCard
-            options={comparisonOptions}
-            selectedDays={trainingDays}
-            unit={unit}
-            onSelect={setTrainingDays}
-          />
-        )}
+          {/* Sticky on large screens so the goal check and generate button stay in view while editing. */}
+          <aside className="space-y-4 lg:sticky lg:top-6">
+            {feasibility && <GoalFeasibilityCard feasibility={feasibility} />}
 
-        {feasibility && <GoalFeasibilityCard feasibility={feasibility} />}
+            <button
+              onClick={handleGenerate}
+              disabled={!canGenerate}
+              aria-disabled={!canGenerate}
+              aria-label={canGenerate ? 'Generate your personalized training plan' : 'Complete the required training details to generate a plan'}
+              className={`w-full px-6 py-4 text-lg font-semibold rounded-xl transition-all duration-200 ${
+                canGenerate
+                  ? 'bg-gradient-to-r from-violet-400 to-sky-400 hover:from-violet-500 hover:to-sky-500 text-white shadow-lg hover:shadow-xl'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+              }`}
+            >
+              Generate Training Plan
+            </button>
 
-        <div className="flex justify-center">
-          <button
-            onClick={handleGenerate}
-            disabled={!canGenerate}
-            aria-disabled={!canGenerate}
-            aria-label={canGenerate ? 'Generate your personalized training plan' : 'Complete the required training details to generate a plan'}
-            className={`px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-200 ${
-              canGenerate
-                ? 'bg-gradient-to-r from-violet-400 to-sky-400 hover:from-violet-500 hover:to-sky-500 text-white shadow-lg hover:shadow-xl hover:scale-105'
-                : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
-            }`}
-          >
-            Generate Training Plan
-          </button>
+            {hasValidPaces && targetNotFaster && (
+              <p role="alert" className="text-center text-amber-600 dark:text-amber-300 text-sm">
+                Target pace is not faster than your current pace. The plan will focus on maintenance unless you set a quicker goal.
+              </p>
+            )}
+
+            {!selectedDistance && (
+              <p role="status" className="text-center text-slate-400 dark:text-slate-500 text-sm">
+                Select a race distance to get started
+              </p>
+            )}
+
+            <SavedPlansList savedPlans={savedPlans} onView={handleViewSaved} onDelete={handleDeleteSaved} />
+          </aside>
         </div>
-
-        {hasValidPaces && targetNotFaster && (
-          <p role="alert" className="text-center text-amber-600 dark:text-amber-300 text-sm">
-            Target pace is not faster than your current pace. The plan will focus on maintenance unless you set a quicker goal.
-          </p>
-        )}
-
-        {!selectedDistance && (
-          <p role="status" className="text-center text-slate-400 dark:text-slate-500 text-sm">
-            Select a race distance to get started
-          </p>
-        )}
-
-        <SavedPlansList savedPlans={savedPlans} onView={handleViewSaved} onDelete={handleDeleteSaved} />
       </div>
     </main>
   );
