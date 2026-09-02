@@ -153,7 +153,8 @@ describe('generateTrainingPlan', () => {
 
       // Mid-plan, before the taper flattens everything out.
       expect(longRunAt(beginner, 7)).toBeLessThanOrEqual(longRunAt(advanced, 7))
-      expect(longRunAt(beginner, 7)).toBeLessThanOrEqual(12 + 8 * 0.7 + 1)
+      // Week 8 is a cutback, so compare the week before it against the beginner growth cap.
+      expect(longRunAt(beginner, 6)).toBeLessThanOrEqual(12 + 6 * 2)
     })
 
     it('mentions the experience level in the summary', () => {
@@ -239,29 +240,18 @@ describe('generateTrainingPlan', () => {
       })
     })
 
-    it('limits quality training to approximately 20% of weekly mileage (excluding race week)', () => {
+    it('limits intensity to roughly 20% of weekly mileage (excluding race week)', () => {
       const plan = generateTrainingPlan('half', defaultCurrentPace, defaultTargetPace, 5)
 
       // Exclude race week as it has unique structure with the race itself
       const trainingWeeks = plan.weeks.slice(0, -1)
 
       trainingWeeks.forEach((week) => {
-        const totalMileage = parseInt(week.totalMileage)
-        let qualityMileage = 0
+        const totalMileage = parseMileage(week.totalMileage)
+        // Only the hard portion of a session counts: warmups and cooldowns are easy running.
+        const intensityKm = week.days.reduce((sum, day) => sum + (day.dayType === 'quality' ? day.qualityKm ?? 0 : 0), 0)
 
-        week.days.forEach((day) => {
-          if (day.dayType === 'quality' && day.distance) {
-            // Extract number from distance string like "5 km" or "5 km total"
-            const match = day.distance.match(/(\d+)/)
-            if (match) {
-              qualityMileage += parseInt(match[1])
-            }
-          }
-        })
-
-        // Quality should be at most ~25% of total mileage (22% cap + some margin)
-        const qualityPercentage = (qualityMileage / totalMileage) * 100
-        expect(qualityPercentage).toBeLessThanOrEqual(30)
+        expect((intensityKm / totalMileage) * 100).toBeLessThanOrEqual(25)
       })
     })
 
@@ -522,6 +512,86 @@ describe('generateTrainingPlan', () => {
 
       const plan = generateTrainingPlan('5k', slowPace, fastPace, defaultTrainingDays)
       expect(plan.weeks).toHaveLength(8)
+    })
+  })
+
+  describe('race-specific progression', () => {
+    const longRunAt = (plan: ReturnType<typeof generateTrainingPlan>, weekIndex: number) =>
+      plan.weeks[weekIndex].days.find((day) => day.dayType === 'long')?.distanceKm ?? 0
+    const peakLongRun = (plan: ReturnType<typeof generateTrainingPlan>) =>
+      Math.max(...plan.weeks.map((_, index) => longRunAt(plan, index)))
+    const parsePace = (pace?: string) => {
+      const match = pace?.match(/(\d+):(\d+)/)
+      return match ? parseInt(match[1]) * 60 + parseInt(match[2]) : 0
+    }
+
+    it('builds the marathon long run past 30 km from a modest base', () => {
+      const plan = generateTrainingPlan('full', defaultCurrentPace, defaultTargetPace, 5, 25, 8)
+      expect(peakLongRun(plan)).toBeGreaterThanOrEqual(30)
+      // The peak lands in the last hard week, right before the taper.
+      expect(longRunAt(plan, 12)).toBe(peakLongRun(plan))
+      expect(longRunAt(plan, 13)).toBeLessThan(peakLongRun(plan))
+    })
+
+    it('scales the peak long run to the race distance', () => {
+      const peaks = (['5k', '10k', 'half', 'full'] as RaceDistance[]).map((distance) =>
+        peakLongRun(generateTrainingPlan(distance, defaultCurrentPace, defaultTargetPace, 5))
+      )
+      expect(peaks[0]).toBeLessThan(peaks[1])
+      expect(peaks[1]).toBeLessThan(peaks[2])
+      expect(peaks[2]).toBeLessThan(peaks[3])
+      expect(peaks[2]).toBeGreaterThanOrEqual(20)
+    })
+
+    it('never grows the long run faster than the experience level allows', () => {
+      const plan = generateTrainingPlan('full', defaultCurrentPace, defaultTargetPace, 5, 25, 8, 'beginner')
+      plan.weeks.slice(0, -1).forEach((week, index) => {
+        expect(longRunAt(plan, index)).toBeLessThanOrEqual(8 + 2 * index + 0.5)
+        expect(longRunAt(plan, index)).toBeLessThanOrEqual(Number(week.totalMileage.replace(' km', '')) * 0.5 + 0.5)
+      })
+    })
+
+    it('runs marathon tempo faster than race pace and intervals at 5K effort', () => {
+      const plan = generateTrainingPlan('full', defaultCurrentPace, defaultCurrentPace, 5, 40, 16)
+      const week = plan.weeks[9]
+      const tempo = week.days.find((day) => day.workout === 'Tempo / Threshold Run')
+      const intervals = week.days.find((day) => day.workout === 'Interval Training')
+      const easy = week.days.find((day) => day.dayType === 'easy')
+      const racePace = 6 * 60
+
+      expect(parsePace(tempo?.pace)).toBeLessThan(racePace)
+      expect(parsePace(tempo?.pace)).toBeGreaterThan(racePace - 40)
+      expect(parsePace(intervals?.pace)).toBeLessThan(parsePace(tempo?.pace))
+      expect(parsePace(easy?.pace)).toBeGreaterThan(racePace)
+      expect(tempo?.qualityKm).toBeGreaterThanOrEqual(6)
+      expect(intervals?.description).toContain('x1km')
+    })
+
+    it('runs 5K tempo slower than race pace with 400m reps', () => {
+      const plan = generateTrainingPlan('5k', defaultCurrentPace, defaultCurrentPace, 5, 25, 10)
+      const week = plan.weeks[4]
+      const tempo = week.days.find((day) => day.workout === 'Tempo / Threshold Run')
+      const intervals = week.days.find((day) => day.workout === 'Interval Training')
+
+      expect(parsePace(tempo?.pace)).toBeGreaterThan(6 * 60)
+      expect(intervals?.description).toContain('x400m')
+    })
+
+    it('keeps weekly volume when the runner has fewer days available', () => {
+      const threeDay = generateTrainingPlan('full', defaultCurrentPace, defaultTargetPace, 3, 40, 16)
+      const fourDay = generateTrainingPlan('full', defaultCurrentPace, defaultTargetPace, 4, 40, 16)
+      threeDay.weeks.forEach((week, index) => {
+        expect(Number(week.totalMileage.replace(' km', ''))).toBeLessThanOrEqual(
+          Number(fourDay.weeks[index].totalMileage.replace(' km', ''))
+        )
+      })
+      expect(peakLongRun(threeDay)).toBe(peakLongRun(fourDay))
+    })
+
+    it('summarises the peak long run and weekly volume', () => {
+      const plan = generateTrainingPlan('full', defaultCurrentPace, defaultTargetPace, 5, 25, 8)
+      expect(plan.summary).toMatch(/builds to a 3\d km long run/)
+      expect(plan.summary).toContain('an intermediate runner')
     })
   })
 })

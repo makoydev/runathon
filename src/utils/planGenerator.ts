@@ -1,19 +1,8 @@
 import type { RaceDistance, Pace, TrainingPlan, TrainingWeek, TrainingDay, ExperienceLevel, DistanceUnit } from '../types';
 import { DISTANCE_INFO, EXPERIENCE_INFO } from '../types';
 import { KM_PER_MILE } from './units';
-
-// Scaling knobs per experience level: how hard the plan is allowed to push
-// volume growth, long-run progression, and weekly quality frequency.
-const EXPERIENCE_CONFIG: Record<ExperienceLevel, {
-  peakMileageMultiplier: number;
-  weeklyGrowthRate: number;
-  longRunGrowthPerWeek: number;
-  maxQualitySessions: number;
-}> = {
-  beginner: { peakMileageMultiplier: 0.8, weeklyGrowthRate: 1.08, longRunGrowthPerWeek: 0.7, maxQualitySessions: 1 },
-  intermediate: { peakMileageMultiplier: 1, weeklyGrowthRate: 1.1, longRunGrowthPerWeek: 1, maxQualitySessions: 2 },
-  advanced: { peakMileageMultiplier: 1.1, weeklyGrowthRate: 1.12, longRunGrowthPerWeek: 1.3, maxQualitySessions: 2 },
-};
+import { DISTANCE_TARGETS, EXPERIENCE_CONFIG, peakWeeklyMileage, peakLongRun } from './trainingTargets';
+import { deriveTrainingPaces } from './trainingPaces';
 
 function paceToSeconds(pace: Pace): number {
   return Math.max(0, pace.minutes * 60 + pace.seconds);
@@ -40,10 +29,6 @@ function formatDistance(distanceKm: number, unit: DistanceUnit = 'km'): string {
   return Number.isInteger(rounded) ? `${rounded} ${unit}` : `${rounded.toFixed(1)} ${unit}`;
 }
 
-function formatMileage(distanceKm: number, unit: DistanceUnit = 'km'): string {
-  return formatDistance(distanceKm, unit);
-}
-
 function scheduledMileage(days: TrainingDay[]): number {
   return days.reduce((total, day) => {
     if (day.dayType === 'rest') return total;
@@ -56,19 +41,105 @@ function normalizeDistance(distance: number): number {
   return Math.max(0, Math.round(distance * 10) / 10);
 }
 
-function getEasyPace(pace: Pace, unit: DistanceUnit = 'km'): string {
-  const seconds = paceToSeconds(pace) + 60; // Easy pace is ~60 sec slower
-  return formatPace(secondsToPace(seconds), unit);
+function roundHalf(value: number): number {
+  return Math.round(value * 2) / 2;
 }
 
-function getTempoPace(pace: Pace, unit: DistanceUnit = 'km'): string {
-  const seconds = paceToSeconds(pace) + 15; // Tempo is ~15 sec slower than race pace
-  return formatPace(secondsToPace(seconds), unit);
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
-function getIntervalPace(pace: Pace, unit: DistanceUnit = 'km'): string {
-  const seconds = paceToSeconds(pace) - 15; // Intervals are ~15 sec faster than race pace
-  return formatPace(secondsToPace(seconds), unit);
+type Phase = 'Base Building' | 'Build Phase' | 'Peak Training' | 'Taper';
+
+function phaseFor(weekNum: number, totalWeeks: number): Phase {
+  const progress = weekNum / totalWeeks;
+  if (progress < 0.25) return 'Base Building';
+  if (progress < 0.5) return 'Build Phase';
+  if (progress < 0.85) return 'Peak Training';
+  return 'Taper';
+}
+
+// The last hard week: volume and the long run peak here, then the taper cuts back.
+function peakWeekFor(totalWeeks: number): number {
+  let peakWeek = 1;
+  for (let week = 1; week <= totalWeeks; week++) {
+    if (phaseFor(week, totalWeeks) !== 'Taper') peakWeek = week;
+  }
+  return peakWeek;
+}
+
+// Fraction of peak volume kept in each taper week, keyed by weeks until race week.
+const TAPER_VOLUME: Record<number, number> = { 2: 0.8, 1: 0.6, 0: 0.3 };
+const TAPER_LONG_RUN: Record<number, number> = { 2: 0.7, 1: 0.5, 0: 0 };
+const CUTBACK_FACTOR = 0.75;
+
+// Which run days survive when the runner has fewer available days. Key sessions
+// (long run, tempo) are kept first; optional easy days go first.
+const KEEP_ORDER = ['Saturday', 'Thursday', 'Wednesday', 'Tuesday', 'Sunday', 'Friday'];
+const RACE_WEEK_KEEP_ORDER = ['Sunday', 'Thursday', 'Saturday', 'Tuesday', 'Friday', 'Wednesday'];
+
+interface WeekVolume {
+  weeklyMileage: number;
+  longRun: number;
+  isCutback: boolean;
+}
+
+function weekVolume(
+  weekNum: number,
+  totalWeeks: number,
+  distance: RaceDistance,
+  experienceLevel: ExperienceLevel,
+  currentWeeklyMileage: number,
+  longestRecentRun: number
+): WeekVolume {
+  const targets = DISTANCE_TARGETS[distance];
+  const experience = EXPERIENCE_CONFIG[experienceLevel];
+  const phase = phaseFor(weekNum, totalWeeks);
+  const peakWeek = peakWeekFor(totalWeeks);
+  const ramp = peakWeek > 1 ? clamp((weekNum - 1) / (peakWeek - 1), 0, 1) : 1;
+  const isCutback = weekNum % 4 === 0 && phase !== 'Taper' && weekNum !== totalWeeks;
+
+  // Weekly volume: ramp from the runner's current load toward the distance peak,
+  // never growing faster than the experience level's compounding rate allows.
+  const startMileage = currentWeeklyMileage > 0 ? currentWeeklyMileage : targets.startMileage;
+  const peakMileage = Math.max(peakWeeklyMileage(distance, experienceLevel), startMileage);
+  const rampedMileage = startMileage + (peakMileage - startMileage) * ramp;
+  const growthCap = currentWeeklyMileage > 0
+    ? currentWeeklyMileage * Math.pow(experience.weeklyGrowthRate, weekNum)
+    : Infinity;
+  let weeklyMileage = Math.min(rampedMileage, growthCap);
+
+  // Long run: ramp from the runner's longest recent run toward the distance peak,
+  // limited by a per-week growth step, and never more than half the week.
+  const startLongRun = longestRecentRun > 0 ? longestRecentRun : targets.startMileage * 0.4;
+  const targetLongRun = Math.max(peakLongRun(distance, experienceLevel), startLongRun);
+  const rampedLongRun = startLongRun + (targetLongRun - startLongRun) * ramp;
+  const longRunGrowthCap = startLongRun + experience.longRunGrowthPerWeek * (weekNum - 1);
+  let longRun = Math.min(rampedLongRun, longRunGrowthCap);
+
+  if (phase === 'Taper') {
+    const weeksToRace = totalWeeks - weekNum;
+    weeklyMileage = peakMileage * (TAPER_VOLUME[weeksToRace] ?? 0.6);
+    const peakedLongRun = Math.min(targetLongRun, startLongRun + experience.longRunGrowthPerWeek * (peakWeek - 1));
+    longRun = peakedLongRun * (TAPER_LONG_RUN[weeksToRace] ?? 0.5);
+  } else if (isCutback) {
+    weeklyMileage *= CUTBACK_FACTOR;
+    longRun *= CUTBACK_FACTOR;
+  }
+
+  weeklyMileage = Math.max(Math.round(weeklyMileage), 10);
+  longRun = clamp(Math.round(longRun), 0, Math.round(weeklyMileage * 0.5));
+  return { weeklyMileage, longRun, isCutback };
+}
+
+interface QualitySession {
+  warmup: number;
+  segment: number;
+  cooldown: number;
+}
+
+function sessionTotal(session: QualitySession): number {
+  return session.warmup + session.segment + session.cooldown;
 }
 
 function generateWeeklyPlan(
@@ -84,119 +155,105 @@ function generateWeeklyPlan(
   unit: DistanceUnit = 'km'
 ): TrainingWeek {
   const info = DISTANCE_INFO[distance];
+  const targets = DISTANCE_TARGETS[distance];
   const experience = EXPERIENCE_CONFIG[experienceLevel];
-  const normalizedWeeklyMileage = normalizeDistance(currentWeeklyMileage);
-  const normalizedLongestRun = normalizeDistance(longestRecentRun);
+  const phase = phaseFor(weekNum, totalWeeks);
+  const isRaceWeek = weekNum === totalWeeks;
+  const progress = weekNum / totalWeeks;
+
+  // Race pace moves from the current pace toward the goal across the plan, and
+  // every training pace is derived from that week's race pace.
   const currentSeconds = paceToSeconds(currentPace);
   const targetSeconds = paceToSeconds(targetPace);
-  const progress = weekNum / totalWeeks;
-  const interpolatedSeconds = currentSeconds - (currentSeconds - targetSeconds) * progress;
-  const currentWeekPace = secondsToPace(interpolatedSeconds);
-  const currentWeekSeconds = paceToSeconds(currentWeekPace);
-
+  const weekRaceSeconds = currentSeconds - (currentSeconds - targetSeconds) * progress;
+  const paces = deriveTrainingPaces(weekRaceSeconds, info.km);
   const fmtDistance = (km: number) => formatDistance(km, unit);
   const fmtPace = (pace: Pace) => formatPace(pace, unit);
-  const easyPace = getEasyPace(currentWeekPace, unit);
-  const tempoPace = getTempoPace(currentWeekPace, unit);
-  const intervalPace = getIntervalPace(currentWeekPace, unit);
-  const recoveryPace = fmtPace(secondsToPace(currentWeekSeconds + 75));
+  const easyPace = fmtPace(secondsToPace(paces.easy));
+  const recoveryPace = fmtPace(secondsToPace(paces.recovery));
+  const thresholdPace = fmtPace(secondsToPace(paces.threshold));
+  const intervalPace = fmtPace(secondsToPace(paces.interval));
 
-  // Determine training phases
-  let phase: string;
-  if (progress < 0.25) {
-    phase = 'Base Building';
-  } else if (progress < 0.5) {
-    phase = 'Build Phase';
-  } else if (progress < 0.85) {
-    phase = 'Peak Training';
-  } else {
-    phase = 'Taper';
-  }
-
-  const defaultMileage = {
-    '5k': { start: 15, peak: 25 },
-    '10k': { start: 20, peak: 35 },
-    'half': { start: 25, peak: 45 },
-    'full': { start: 30, peak: 60 },
-  };
-
-  // Every 4th week is a cutback: reduced volume and quality so the body
-  // absorbs training, except during the taper (already reduced) and race week.
-  const isCutback = weekNum % 4 === 0 && phase !== 'Taper' && weekNum !== totalWeeks;
-
-  const minimumFunctionalMileage = trainingDays * 3;
-  const plannedStartMileage = normalizedWeeklyMileage > 0
-    ? Math.max(minimumFunctionalMileage, normalizedWeeklyMileage)
-    : defaultMileage[distance].start;
-  const plannedPeakMileage = Math.max(
-    Math.round(defaultMileage[distance].peak * experience.peakMileageMultiplier),
-    plannedStartMileage
+  const { weeklyMileage, longRun, isCutback } = weekVolume(
+    weekNum, totalWeeks, distance, experienceLevel, currentWeeklyMileage, longestRecentRun
   );
-  const progressiveMileage = plannedStartMileage + (plannedPeakMileage - plannedStartMileage) * progress;
-  const weeklyGrowthCap = normalizedWeeklyMileage > 0
-    ? Math.max(minimumFunctionalMileage, normalizedWeeklyMileage * Math.pow(experience.weeklyGrowthRate, weekNum))
-    : progressiveMileage;
-  const taperMultiplier = phase === 'Taper' ? 0.6 : 1;
-  const cutbackMultiplier = isCutback ? 0.75 : 1;
-  const weeklyMileage = Math.round(Math.min(progressiveMileage, weeklyGrowthCap) * taperMultiplier * cutbackMultiplier);
 
-  // Keep roughly 80/20 easy vs. quality (tempo/interval) distribution
-  const qualityFraction = phase === 'Taper' ? 0.12 : phase === 'Base Building' ? 0.12 : 0.2;
-  const plannedQualitySessions = phase === 'Base Building' ? 1 : phase === 'Taper' ? 1 : 2;
-  const availabilityQualitySessions = trainingDays >= 5 ? plannedQualitySessions : trainingDays >= 4 ? Math.min(plannedQualitySessions, 2) : Math.min(plannedQualitySessions, 1);
-  const qualitySessions = Math.min(availabilityQualitySessions, experience.maxQualitySessions, isCutback ? 1 : Infinity);
-  const targetQuality = weeklyMileage * qualityFraction;
-  let intervalDistance = qualitySessions >= 2 ? Math.max(3, Math.round(targetQuality * 0.4)) : 0;
-  let tempoDistance = qualitySessions >= 1 ? Math.max(3, Math.round(targetQuality * (qualitySessions >= 2 ? 0.6 : 1))) : 0;
-  const qualityCap = Math.round(weeklyMileage * (phase === 'Taper' ? 0.15 : 0.22));
-  const qualityTotal = intervalDistance + tempoDistance;
-  if (qualityTotal > qualityCap) {
-    const scale = qualityCap / qualityTotal;
-    intervalDistance = Math.max(2, Math.round(intervalDistance * scale));
-    tempoDistance = Math.max(3, Math.round(tempoDistance * scale));
+  // Quality frequency: one session while building base or tapering, two in the
+  // build and peak phases, limited by experience, availability, and cutbacks.
+  const plannedQualitySessions = phase === 'Build Phase' || phase === 'Peak Training' ? 2 : 1;
+  const availabilityQualitySessions = trainingDays >= 4 ? 2 : 1;
+  const qualitySessions = Math.min(
+    plannedQualitySessions,
+    availabilityQualitySessions,
+    experience.maxQualitySessions,
+    isCutback || isRaceWeek ? 1 : 2
+  );
+
+  // Threshold work is sized as a share of the week, capped per race distance.
+  const thresholdFraction = phase === 'Base Building' ? 0.08 : phase === 'Build Phase' ? 0.1 : phase === 'Peak Training' ? 0.12 : 0.06;
+  const easyBookend = weeklyMileage >= 30 ? 2 : 1.5;
+  const tempo: QualitySession = {
+    warmup: easyBookend,
+    segment: isRaceWeek ? 2 : clamp(roundHalf(weeklyMileage * thresholdFraction), 3, targets.maxThresholdKm),
+    cooldown: easyBookend,
+  };
+  const repTotal = clamp(roundHalf(weeklyMileage * 0.06), 2.4, 5);
+  const minReps = targets.repKm < 0.5 ? 6 : 4;
+  const maxReps = targets.repKm < 0.5 ? 12 : 8;
+  const reps = qualitySessions >= 2 ? clamp(Math.round(repTotal / targets.repKm), minReps, maxReps) : 0;
+  const intervals: QualitySession = {
+    warmup: easyBookend,
+    segment: roundHalf(reps * targets.repKm),
+    cooldown: easyBookend,
+  };
+
+  const qualityTotal = sessionTotal(tempo) + (qualitySessions >= 2 ? sessionTotal(intervals) : 0);
+  const raceWeekLongRun = 3;
+  const keyMileage = qualityTotal + (isRaceWeek ? raceWeekLongRun : longRun);
+  const easyBudget = Math.max(0, weeklyMileage - keyMileage);
+
+  // Decide which days survive the runner's availability before spreading the
+  // easy mileage, so fewer days still adds up to the planned week.
+  const keepOrder = isRaceWeek ? RACE_WEEK_KEEP_ORDER : KEEP_ORDER;
+  const retained = new Set(keepOrder.slice(0, trainingDays));
+  const tuesdayIsEasy = qualitySessions < 2;
+  const candidateEasyDays: Array<[string, number]> = [
+    ['Wednesday', 1],
+    ['Tuesday', tuesdayIsEasy ? 0.8 : 0],
+    ['Sunday', isRaceWeek ? 0 : 0.8],
+    ['Friday', 0.6],
+  ];
+  const easyWeights = candidateEasyDays.filter(([day, weight]) => weight > 0 && retained.has(day));
+  // Hand out the easy budget in weight order. Any day getting under 3 km is
+  // rounded up to 3 km (or dropped when the budget is spent) so small weeks
+  // still produce runnable days instead of scattering 1-2 km scraps.
+  const easyDayCap = Math.max(4, Math.round(longRun * 0.6));
+  const easyKm: Record<string, number> = {};
+  let remainingBudget = Math.round(easyBudget);
+  let remainingWeight = easyWeights.reduce((sum, [, weight]) => sum + weight, 0);
+  for (const [day, weight] of [...easyWeights].sort((a, b) => b[1] - a[1])) {
+    let share = remainingWeight > 0 ? Math.round((remainingBudget * weight) / remainingWeight) : 0;
+    if (share < 3) share = remainingBudget >= 3 ? 3 : 0;
+    share = Math.min(share, easyDayCap, remainingBudget);
+    easyKm[day] = share;
+    remainingBudget -= share;
+    remainingWeight -= weight;
+  }
+  // Fold any scraps back into the biggest easy day so volume is not lost.
+  if (remainingBudget > 0 && easyWeights.length > 0) {
+    const [mainDay] = [...easyWeights].sort((a, b) => b[1] - a[1])[0];
+    easyKm[mainDay] = Math.min(easyDayCap, easyKm[mainDay] + remainingBudget);
   }
 
-  const easyMileage = Math.max(0, weeklyMileage - intervalDistance - tempoDistance);
-  const stridesDistance = qualitySessions >= 2
-    ? 0
-    : Math.min(Math.max(3, Math.round(easyMileage * 0.2)), easyMileage);
-  let remainingEasyForLongRun = Math.max(0, easyMileage - stridesDistance);
-  const defaultLongRunFloor = normalizedLongestRun > 0
-    ? Math.max(3, Math.min(6, Math.ceil(normalizedLongestRun)))
-    : 6;
-  const longRunGrowthCap = normalizedLongestRun > 0
-    ? normalizedLongestRun + weekNum * experience.longRunGrowthPerWeek
-    : remainingEasyForLongRun;
-  const longRunDistance = Math.round(Math.min(
-    Math.max(defaultLongRunFloor, Math.round(remainingEasyForLongRun * 0.45)),
-    longRunGrowthCap,
-    remainingEasyForLongRun
-  ));
-  remainingEasyForLongRun = Math.max(0, remainingEasyForLongRun - longRunDistance);
-  const easySupportMileage = remainingEasyForLongRun;
-  let remainingEasy = Math.max(0, easyMileage - longRunDistance);
-  remainingEasy = Math.max(0, remainingEasy - stridesDistance);
-  const wednesdayDistance = remainingEasy > 0
-    ? Math.min(Math.max(3, Math.round(easySupportMileage * 0.35)), remainingEasy)
-    : 0;
-  remainingEasy = Math.max(0, remainingEasy - wednesdayDistance);
-  const sundayDistance = remainingEasy > 0
-    ? Math.min(Math.max(3, Math.round(easySupportMileage * 0.35)), remainingEasy)
-    : 0;
-  remainingEasy = Math.max(0, remainingEasy - sundayDistance);
-  const fridayOptional = Math.max(0, Math.round(remainingEasy));
-
-  const runDays = () => days.filter((d) => d.dayType && d.dayType !== 'rest').length;
-  const downgradeToRest = (dayName: string) => {
-    const day = days.find((d) => d.day === dayName);
-    if (!day) return;
-    day.workout = 'Rest';
-    day.description = 'Rest day - adjusted to match your selected weekly frequency';
-    day.pace = undefined;
-    day.distance = undefined;
-    day.distanceKm = undefined;
-    day.dayType = 'rest';
+  const easyDay = (name: string, workout: string, description: string, pace: string, dayType: TrainingDay['dayType']): TrainingDay => {
+    const km = easyKm[name] ?? 0;
+    return km > 0
+      ? { day: name, workout, description, pace, distance: fmtDistance(km), distanceKm: km, dayType }
+      : { day: name, workout, description, distance: 'Rest', dayType: 'rest' };
   };
+
+  const repLabel = targets.repKm < 1 ? `${Math.round(targets.repKm * 1000)}m` : `${targets.repKm}km`;
+  const repRecovery = targets.repKm < 0.5 ? '90s jog' : targets.repKm < 1 ? '2 min jog' : '3 min jog';
 
   const days: TrainingDay[] = [
     {
@@ -205,75 +262,56 @@ function generateWeeklyPlan(
       description: 'Active recovery - light yoga, swimming, or complete rest',
       dayType: 'rest',
     },
-    {
-      day: 'Tuesday',
-      workout: qualitySessions >= 2 ? 'Interval Training' : 'Strides + Drills',
-      description: qualitySessions >= 2
-        ? `10-15 min easy warmup with a few strides, then ${Math.min(6 + Math.floor(progress * 4), 10)}x400m at ${intervalPace} with 90s jog recovery, 10 min easy cooldown (all within the session distance)`
-        : `${fmtDistance(stridesDistance)} easy Zone 2 with 6-8x20s relaxed strides to build mechanics (keeps base weeks to one quality day)`,
-      pace: qualitySessions >= 2 ? intervalPace : easyPace,
-      distance: qualitySessions >= 2 ? fmtDistance(intervalDistance) : `${fmtDistance(stridesDistance)} easy + strides`,
-      distanceKm: qualitySessions >= 2 ? intervalDistance : stridesDistance,
-      dayType: qualitySessions >= 2 ? 'quality' : 'easy',
-    },
-    {
-      day: 'Wednesday',
-      workout: 'Zone 2 Easy Run',
-      description: `Conversational pace run at ${easyPace} (part of the 80% easy volume)`,
-      pace: easyPace,
-      distance: wednesdayDistance > 0 ? fmtDistance(wednesdayDistance) : 'Optional rest',
-      distanceKm: wednesdayDistance > 0 ? wednesdayDistance : undefined,
-      dayType: wednesdayDistance > 0 ? 'easy' : 'rest',
-    },
+    qualitySessions >= 2
+      ? {
+          day: 'Tuesday',
+          workout: 'Interval Training',
+          description: `${fmtDistance(intervals.warmup)} easy warmup with a few strides, then ${reps}x${repLabel} at ${intervalPace} (5K effort) with ${repRecovery} recovery, ${fmtDistance(intervals.cooldown)} easy cooldown`,
+          pace: intervalPace,
+          distance: `${fmtDistance(sessionTotal(intervals))} total`,
+          distanceKm: sessionTotal(intervals),
+          qualityKm: intervals.segment,
+          dayType: 'quality',
+        }
+      : easyDay(
+          'Tuesday',
+          'Strides + Drills',
+          `${fmtDistance(easyKm.Tuesday ?? 0)} easy Zone 2 with 6-8x20s relaxed strides to build mechanics`,
+          easyPace,
+          'easy'
+        ),
+    easyDay('Wednesday', 'Zone 2 Easy Run', `Conversational pace run at ${easyPace} (part of the 80% easy volume)`, easyPace, 'easy'),
     {
       day: 'Thursday',
-      workout: qualitySessions >= 1 ? 'Tempo / Threshold Run' : 'Zone 2 Easy Run',
-      description: qualitySessions >= 1
-        ? `10 min easy warmup, sustained effort at ${tempoPace} for the middle of the run, 10 min easy cooldown (all within the session distance)`
-        : `Another easy aerobic day at ${easyPace} to prioritize base building`,
-      pace: qualitySessions >= 1 ? tempoPace : easyPace,
-      distance: qualitySessions >= 1 ? `${fmtDistance(tempoDistance)} total` : fmtDistance(Math.max(4, Math.round(weeklyMileage * 0.2))),
-      distanceKm: qualitySessions >= 1 ? tempoDistance : Math.max(4, Math.round(weeklyMileage * 0.2)),
-      dayType: qualitySessions >= 1 ? 'quality' : 'easy',
+      workout: 'Tempo / Threshold Run',
+      description: `${fmtDistance(tempo.warmup)} easy warmup, then ${fmtDistance(tempo.segment)} continuous at threshold (${thresholdPace}, comfortably hard), ${fmtDistance(tempo.cooldown)} easy cooldown`,
+      pace: thresholdPace,
+      distance: `${fmtDistance(sessionTotal(tempo))} total`,
+      distanceKm: sessionTotal(tempo),
+      qualityKm: tempo.segment,
+      dayType: 'quality',
     },
-    {
-      day: 'Friday',
-      workout: 'Rest or Easy Run',
-      description: 'Optional short Zone 1-2 recovery shuffle or complete rest',
-      pace: easyPace,
-      distance: fridayOptional > 0 ? `${fmtDistance(fridayOptional)} (optional)` : 'Rest',
-      distanceKm: fridayOptional > 0 ? fridayOptional : undefined,
-      dayType: fridayOptional > 0 ? 'easy' : 'rest',
-    },
+    easyDay('Friday', 'Rest or Easy Run', 'Optional short Zone 1-2 recovery shuffle or complete rest', easyPace, 'easy'),
     {
       day: 'Saturday',
       workout: 'Long Zone 2 Run',
       description: `Build endurance at ${easyPace} (core of the easy mileage)`,
       pace: easyPace,
-      distance: fmtDistance(longRunDistance),
-      distanceKm: longRunDistance,
+      distance: fmtDistance(longRun),
+      distanceKm: longRun,
       dayType: 'long',
     },
-    {
-      day: 'Sunday',
-      workout: 'Recovery Run',
-      description: `Very easy pace at ${recoveryPace}`,
-      pace: recoveryPace,
-      distance: sundayDistance > 0 ? fmtDistance(sundayDistance) : 'Rest',
-      distanceKm: sundayDistance > 0 ? sundayDistance : undefined,
-      dayType: sundayDistance > 0 ? 'recovery' : 'rest',
-    },
+    easyDay('Sunday', 'Recovery Run', `Very easy pace at ${recoveryPace}`, recoveryPace, 'recovery'),
   ];
 
-  // Adjust final week racing days
-  if (weekNum === totalWeeks) {
+  if (isRaceWeek) {
     days[5] = {
       day: 'Saturday',
       workout: 'Pre-Race Shakeout',
       description: 'Short, easy 2-3km jog with a few strides',
-      pace: getEasyPace(targetPace, unit),
-      distance: fmtDistance(3),
-      distanceKm: 3,
+      pace: easyPace,
+      distance: fmtDistance(raceWeekLongRun),
+      distanceKm: raceWeekLongRun,
       dayType: 'easy',
     };
     days[6] = {
@@ -283,25 +321,29 @@ function generateWeeklyPlan(
       pace: fmtPace(targetPace),
       distance: fmtDistance(info.km),
       distanceKm: info.km,
+      qualityKm: info.km,
       dayType: 'quality',
     };
   }
 
   // Trim to the user's available training days while preserving key workouts.
-  const removalPriority = weekNum === totalWeeks
-    ? ['Wednesday', 'Friday', 'Tuesday', 'Saturday', 'Thursday']
-    : ['Friday', 'Sunday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday'];
-  for (const dayName of removalPriority) {
-    if (runDays() <= trainingDays) break;
-    if (weekNum === totalWeeks && dayName === 'Sunday') continue; 
-    downgradeToRest(dayName);
+  for (const day of days) {
+    if (day.dayType === 'rest' || retained.has(day.day)) continue;
+    day.workout = 'Rest';
+    day.description = 'Rest day - adjusted to match your selected weekly frequency';
+    day.pace = undefined;
+    day.distance = undefined;
+    day.distanceKm = undefined;
+    day.qualityKm = undefined;
+    day.dayType = 'rest';
   }
+
   return {
     week: weekNum,
     phase,
     isCutback: isCutback || undefined,
     days,
-    totalMileage: formatMileage(scheduledMileage(days), unit),
+    totalMileage: formatDistance(scheduledMileage(days), unit),
   };
 }
 
@@ -352,10 +394,14 @@ export function generateTrainingPlan(
       ? 'tempo work'
       : 'strides and easy aerobic work';
   const distributionNote = `Plan targets ~80% easy/Zone 2 mileage with controlled ${qualityWork} adjusted to your available training days.`;
+  const peakLongRunKm = Math.max(...weeks.map((week) => week.days.find((day) => day.dayType === 'long')?.distanceKm ?? 0));
+  const peakWeekKm = Math.max(...weeks.slice(0, -1).map((week) => scheduledMileage(week.days)));
+  const peakNote = ` It builds to a ${formatDistance(peakLongRunKm, unit)} long run and ~${formatDistance(peakWeekKm, unit)}/week before the taper.`;
   const trainingLoadNote = normalizedWeeklyMileage > 0 && normalizedLongestRun > 0
     ? ` It starts from your current ${formatDistance(normalizedWeeklyMileage, unit)}/week load and ${formatDistance(normalizedLongestRun, unit)} longest recent run.`
     : '';
-  const experienceNote = ` Volume and intensity are scaled for a ${EXPERIENCE_INFO[experienceLevel].name.toLowerCase()} runner.`;
+  const levelName = EXPERIENCE_INFO[experienceLevel].name.toLowerCase();
+  const experienceNote = ` Volume and intensity are scaled for ${/^[aeiou]/.test(levelName) ? 'an' : 'a'} ${levelName} runner.`;
 
   return {
     distance,
@@ -367,6 +413,6 @@ export function generateTrainingPlan(
     unit,
     trainingDays,
     weeks,
-    summary: `This ${info.weeks}-week plan will guide you from ${formatPace(normalizedCurrentPace, unit)} to ${formatPace(normalizedTargetPace, unit)} ${unit === 'mi' ? 'per mile' : 'per kilometer'} on ${trainingDays} days/week. ${improvementText} ${distributionNote}${trainingLoadNote}${experienceNote}`,
+    summary: `This ${info.weeks}-week plan will guide you from ${formatPace(normalizedCurrentPace, unit)} to ${formatPace(normalizedTargetPace, unit)} ${unit === 'mi' ? 'per mile' : 'per kilometer'} on ${trainingDays} days/week. ${improvementText} ${distributionNote}${peakNote}${trainingLoadNote}${experienceNote}`,
   };
 }

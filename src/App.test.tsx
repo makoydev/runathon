@@ -43,7 +43,7 @@ describe('App', () => {
     expect(screen.getByText('Current Load')).toBeInTheDocument()
     expect(screen.getByText('32 km/week')).toBeInTheDocument()
     expect(screen.getByText('Longest Recent Run')).toBeInTheDocument()
-    expect(screen.getByText('11 km')).toBeInTheDocument()
+    expect(screen.getAllByText('11 km').length).toBeGreaterThan(0)
   })
 
   it('converts inputs and generates a mile-based plan when miles are selected', () => {

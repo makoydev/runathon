@@ -17,6 +17,8 @@ export interface TrainingDay {
   pace?: string;
   distance?: string;
   distanceKm?: number;
+  // Portion of distanceKm run at intensity (threshold segment, interval reps, the race).
+  qualityKm?: number;
 }
 
 export interface TrainingWeek {
