@@ -1,8 +1,9 @@
-import type { RaceDistance, Pace, TrainingPlan, TrainingWeek, TrainingDay, ExperienceLevel, DistanceUnit } from '../types';
+import type { RaceDistance, Pace, TrainingPlan, TrainingWeek, TrainingDay, ExperienceLevel, DistanceUnit, RunWalkRatio } from '../types';
 import { DISTANCE_INFO, EXPERIENCE_INFO } from '../types';
 import { KM_PER_MILE } from './units';
 import { DISTANCE_TARGETS, EXPERIENCE_CONFIG, peakWeeklyMileage, peakLongRun } from './trainingTargets';
 import { deriveTrainingPaces } from './trainingPaces';
+import { generateRunWalkWeeks, ratioLabel } from './runWalk';
 
 function paceToSeconds(pace: Pace): number {
   return Math.max(0, pace.minutes * 60 + pace.seconds);
@@ -355,16 +356,28 @@ export function generateTrainingPlan(
   currentWeeklyMileage = 0,
   longestRecentRun = 0,
   experienceLevel: ExperienceLevel = 'intermediate',
-  unit: DistanceUnit = 'km'
+  unit: DistanceUnit = 'km',
+  runWalk: RunWalkRatio | null = null
 ): TrainingPlan {
   const info = DISTANCE_INFO[distance];
   const normalizedCurrentPace = secondsToPace(paceToSeconds(currentPace));
   const normalizedTargetPace = secondsToPace(paceToSeconds(targetPace));
   const normalizedWeeklyMileage = normalizeDistance(currentWeeklyMileage);
   const normalizedLongestRun = normalizeDistance(longestRecentRun);
-  const weeks: TrainingWeek[] = [];
+  const weeks: TrainingWeek[] = runWalk
+    ? generateRunWalkWeeks({
+        distance,
+        currentPace: normalizedCurrentPace,
+        targetPace: normalizedTargetPace,
+        trainingDays,
+        longestRecentRun: normalizedLongestRun,
+        experienceLevel,
+        unit,
+        ratio: runWalk,
+      })
+    : [];
 
-  for (let i = 1; i <= info.weeks; i++) {
+  for (let i = 1; i <= info.weeks && !runWalk; i++) {
     weeks.push(generateWeeklyPlan(
       i,
       info.weeks,
@@ -393,7 +406,9 @@ export function generateTrainingPlan(
     : hasTempo
       ? 'tempo work'
       : 'strides and easy aerobic work';
-  const distributionNote = `Plan targets ~80% easy/Zone 2 mileage with controlled ${qualityWork} adjusted to your available training days.`;
+  const distributionNote = runWalk
+    ? `Every run uses ${ratioLabel(runWalk)} from the first minute, with two short midweek run-walks, a Magic Mile time trial every third week, and long runs that alternate with short weekends.`
+    : `Plan targets ~80% easy/Zone 2 mileage with controlled ${qualityWork} adjusted to your available training days.`;
   const peakLongRunKm = Math.max(...weeks.map((week) => week.days.find((day) => day.dayType === 'long')?.distanceKm ?? 0));
   const peakWeekKm = Math.max(...weeks.slice(0, -1).map((week) => scheduledMileage(week.days)));
   const peakNote = ` It builds to a ${formatDistance(peakLongRunKm, unit)} long run and ~${formatDistance(peakWeekKm, unit)}/week before the taper.`;
@@ -412,6 +427,8 @@ export function generateTrainingPlan(
     experienceLevel,
     unit,
     trainingDays,
+    method: runWalk ? 'runwalk' : 'continuous',
+    runWalk: runWalk ?? undefined,
     weeks,
     summary: `This ${info.weeks}-week plan will guide you from ${formatPace(normalizedCurrentPace, unit)} to ${formatPace(normalizedTargetPace, unit)} ${unit === 'mi' ? 'per mile' : 'per kilometer'} on ${trainingDays} days/week. ${improvementText} ${distributionNote}${peakNote}${trainingLoadNote}${experienceNote}`,
   };

@@ -4,6 +4,14 @@ export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 
 export type DistanceUnit = 'km' | 'mi';
 
+export type TrainingMethod = 'continuous' | 'runwalk';
+
+// Galloway-style run-walk-run: seconds of running followed by seconds of walking, repeated.
+export interface RunWalkRatio {
+  runSeconds: number;
+  walkSeconds: number;
+}
+
 export interface Pace {
   minutes: number;
   seconds: number;
@@ -59,6 +67,9 @@ export interface TrainingPlan {
   trainingDays: number;
   /** Set when the plan was generated with non-default schedule constraints. */
   assumptions?: PlanAssumptions;
+  /** Absent on older saved plans, which were all continuous running. */
+  method?: TrainingMethod;
+  runWalk?: RunWalkRatio;
   weeks: TrainingWeek[];
   summary: string;
 }

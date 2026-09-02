@@ -1,4 +1,4 @@
-import type { DistanceUnit, ExperienceLevel, Pace, RaceDistance, TrainingPlan } from '../types';
+import type { DistanceUnit, ExperienceLevel, Pace, RaceDistance, RunWalkRatio, TrainingPlan } from '../types';
 import { generateTrainingPlan } from './planGenerator';
 
 export interface PlanOptionStats {
@@ -49,7 +49,8 @@ export function comparePlanOptions(
   weeklyMileageKm: number,
   longestRunKm: number,
   experienceLevel: ExperienceLevel,
-  unit: DistanceUnit
+  unit: DistanceUnit,
+  runWalk: RunWalkRatio | null = null
 ): PlanOptionStats[] {
   return COMPARISON_DAY_OPTIONS.map((trainingDays) =>
     summarizePlan(
@@ -61,7 +62,8 @@ export function comparePlanOptions(
         weeklyMileageKm,
         longestRunKm,
         experienceLevel,
-        unit
+        unit,
+        runWalk
       )
     )
   );

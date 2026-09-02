@@ -11,13 +11,15 @@ export interface DistanceTargets {
   maxThresholdKm: number;
   // Interval rep length: short reps for short races, longer reps for long ones.
   repKm: number;
+  // Peak long run for run-walk plans, which Galloway takes to race distance.
+  runWalkLongRun: number;
 }
 
 export const DISTANCE_TARGETS: Record<RaceDistance, DistanceTargets> = {
-  '5k': { startMileage: 15, peakMileage: 30, peakLongRun: 12, maxThresholdKm: 5, repKm: 0.4 },
-  '10k': { startMileage: 20, peakMileage: 40, peakLongRun: 16, maxThresholdKm: 6, repKm: 0.4 },
-  'half': { startMileage: 25, peakMileage: 50, peakLongRun: 21, maxThresholdKm: 8, repKm: 0.8 },
-  'full': { startMileage: 30, peakMileage: 70, peakLongRun: 32, maxThresholdKm: 12, repKm: 1 },
+  '5k': { startMileage: 15, peakMileage: 30, peakLongRun: 12, maxThresholdKm: 5, repKm: 0.4, runWalkLongRun: 6 },
+  '10k': { startMileage: 20, peakMileage: 40, peakLongRun: 16, maxThresholdKm: 6, repKm: 0.4, runWalkLongRun: 11 },
+  'half': { startMileage: 25, peakMileage: 50, peakLongRun: 21, maxThresholdKm: 8, repKm: 0.8, runWalkLongRun: 21.1 },
+  'full': { startMileage: 30, peakMileage: 70, peakLongRun: 32, maxThresholdKm: 12, repKm: 1, runWalkLongRun: 42.2 },
 };
 
 // Scaling knobs per experience level: how hard the plan is allowed to push
