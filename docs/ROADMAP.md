@@ -89,7 +89,7 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
   - Why: expanding and collapsing weeks should work cleanly without a mouse.
   - Notes: add component tests around aria state and focus behavior.
 
-- [ ] Add high-contrast/dark mode.
+- [x] Add high-contrast/dark mode.
   - Why: training plans are often reviewed at night or outdoors.
   - Notes: implement with CSS variables or Tailwind theme tokens.
 
