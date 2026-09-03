@@ -290,6 +290,24 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /generate your personalized training plan/i })).toBeEnabled()
   })
 
+  it('offers a 24-week run-walk plan for the marathon', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /train with run-walk/i }))
+    expect(screen.getByRole('button', { name: /extended plan, 24 weeks/i })).toBeEnabled()
+
+    fireEvent.click(screen.getByRole('button', { name: /5K, 5 kilometers/i }))
+    expect(screen.getByRole('button', { name: /extended plan, 24 weeks/i })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: /Marathon, 42.2 kilometers/i }))
+    fireEvent.click(screen.getByRole('button', { name: /extended plan, 24 weeks/i }))
+    expect(screen.getByRole('button', { name: /extended plan, 24 weeks/i })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: /generate your personalized training plan/i }))
+
+    expect(screen.getByText('24 weeks')).toBeInTheDocument()
+    expect(screen.getByText(/This 24-week plan/)).toBeInTheDocument()
+  })
+
   it('deletes a saved plan from the list', () => {
     render(<App />)
 

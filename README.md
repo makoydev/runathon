@@ -8,6 +8,7 @@ A simple web app for generating personalized running training plans based on you
 - **Pace Configuration**: Input your current pace and target pace (per kilometer)
 - **Current Training Load**: Add weekly mileage and longest recent run so plans start from your actual baseline
 - **Personalized Plans**: Generate week-by-week training schedules tailored to your goals
+- **Run-Walk (Galloway) Plans**: Walk breaks from the first minute with a chosen run/walk ratio, plus a 24-week option for half and full marathons
 - **Training Phases**: Plans include Base Building, Build Phase, Peak Training, and Taper phases
 - **Workout Variety**: Each week includes intervals, tempo runs, easy runs, long runs, and recovery days
 

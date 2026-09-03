@@ -115,7 +115,7 @@ export function TrainingPlanDisplay({ plan, planId, onReset }: TrainingPlanDispl
 
   const stats: Array<{ label: string; value: string }> = [
     { label: 'Pace', value: `${formatPaceInUnit(plan.currentPace, unit)} → ${formatPaceInUnit(plan.targetPace, unit)}` },
-    { label: 'Duration', value: `${info.weeks} weeks` },
+    { label: 'Duration', value: `${plan.weeks.length} weeks` },
     { label: 'Training Days', value: `${plan.trainingDays} days/week` },
   ];
   if (plan.runWalk) {

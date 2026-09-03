@@ -1,14 +1,17 @@
-import type { RunWalkRatio, TrainingMethod } from '../types';
+import type { RaceDistance, TrainingMethod } from '../types';
+import { DISTANCE_INFO, EXTENDED_PLAN_WEEKS, supportsExtendedPlan } from '../types';
 import { RUN_WALK_PRESETS, autoRunWalkRatio, ratioShortLabel } from '../utils/runWalk';
-
-export type RunWalkChoice = 'auto' | string;
+import type { PlanLengthChoice, RunWalkChoice } from '../utils/runWalk';
 
 interface TrainingMethodSelectorProps {
   method: TrainingMethod;
   ratioChoice: RunWalkChoice;
+  planLength: PlanLengthChoice;
+  distance: RaceDistance | null;
   currentPaceSecondsPerKm: number;
   onMethodChange: (method: TrainingMethod) => void;
   onRatioChange: (choice: RunWalkChoice) => void;
+  onPlanLengthChange: (choice: PlanLengthChoice) => void;
 }
 
 const METHODS: Array<{ id: TrainingMethod; name: string; description: string }> = [
@@ -16,19 +19,22 @@ const METHODS: Array<{ id: TrainingMethod; name: string; description: string }> 
   { id: 'runwalk', name: 'Run-Walk (Galloway)', description: 'Walk breaks from the first minute; long runs every other week' },
 ];
 
-export function resolveRunWalkRatio(choice: RunWalkChoice, currentPaceSecondsPerKm: number): RunWalkRatio {
-  const preset = RUN_WALK_PRESETS.find((candidate) => candidate.id === choice);
-  return preset ? preset.ratio : autoRunWalkRatio(currentPaceSecondsPerKm);
-}
-
 export function TrainingMethodSelector({
   method,
   ratioChoice,
+  planLength,
+  distance,
   currentPaceSecondsPerKm,
   onMethodChange,
   onRatioChange,
+  onPlanLengthChange,
 }: TrainingMethodSelectorProps) {
   const autoRatio = autoRunWalkRatio(currentPaceSecondsPerKm);
+  const extendedAvailable = distance === null || supportsExtendedPlan(distance);
+  const lengthOptions: Array<{ id: PlanLengthChoice; label: string; disabled: boolean }> = [
+    { id: 'standard', label: distance ? `${DISTANCE_INFO[distance].weeks} weeks` : 'Standard', disabled: false },
+    { id: 'extended', label: `${EXTENDED_PLAN_WEEKS} weeks`, disabled: !extendedAvailable },
+  ];
   const options: Array<{ id: RunWalkChoice; label: string }> = [
     { id: 'auto', label: `Auto (${ratioShortLabel(autoRatio)})` },
     ...RUN_WALK_PRESETS.map((preset) => ({ id: preset.id, label: ratioShortLabel(preset.ratio) })),
@@ -100,6 +106,43 @@ export function TrainingMethodSelector({
           </div>
           <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
             Auto picks the ratio Galloway suggests for your current pace. Pick a shorter run segment on hot days or when you are tired.
+          </p>
+        </div>
+      )}
+
+      {method === 'runwalk' && (
+        <div>
+          <p id="plan-length-label" className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Plan length
+          </p>
+          <div role="group" aria-labelledby="plan-length-label" className="mt-2 flex flex-wrap gap-2">
+            {lengthOptions.map((option) => {
+              const selected = option.id === planLength && !option.disabled;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => onPlanLengthChange(option.id)}
+                  disabled={option.disabled}
+                  aria-pressed={selected}
+                  aria-label={`${option.id === 'extended' ? 'Extended' : 'Standard'} plan, ${option.label}`}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    selected
+                      ? 'bg-violet-500 text-white'
+                      : option.disabled
+                        ? 'bg-slate-100 dark:bg-slate-700 text-slate-300 dark:text-slate-500 cursor-not-allowed'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/40 hover:text-violet-600 dark:hover:text-violet-300'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
+            {extendedAvailable
+              ? `The ${EXTENDED_PLAN_WEEKS}-week plan grows the long run more gently and still reaches race distance, with the last long run the same distance from race day.`
+              : `The ${EXTENDED_PLAN_WEEKS}-week plan is offered for half and full marathons; shorter races use the standard length.`}
           </p>
         </div>
       )}

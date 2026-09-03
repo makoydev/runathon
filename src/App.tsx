@@ -11,8 +11,9 @@ import { PlanAssumptionsEditor } from './components/PlanAssumptionsEditor';
 import { SavedPlansList } from './components/SavedPlansList';
 import { UnitToggle } from './components/UnitToggle';
 import { ThemeToggle } from './components/ThemeToggle';
-import { TrainingMethodSelector, resolveRunWalkRatio } from './components/TrainingMethodSelector';
-import type { RunWalkChoice } from './components/TrainingMethodSelector';
+import { TrainingMethodSelector } from './components/TrainingMethodSelector';
+import { resolveRunWalkRatio, resolvePlanWeeks } from './utils/runWalk';
+import type { RunWalkChoice, PlanLengthChoice } from './utils/runWalk';
 import { generateTrainingPlan } from './utils/planGenerator';
 import { assessGoalFeasibility } from './utils/goalFeasibility';
 import { loadSavedPlans, savePlan, deleteSavedPlan, loadActivePlanId, storeActivePlanId } from './utils/planStorage';
@@ -52,7 +53,8 @@ function importSharedPlan(): void {
       inputs.longestRecentRun ?? 0,
       inputs.experienceLevel,
       inputs.unit,
-      inputs.runWalk ?? null
+      inputs.runWalk ?? null,
+      inputs.planWeeks
     ),
     inputs.assumptions
   );
@@ -77,6 +79,7 @@ function App() {
   const [assumptions, setAssumptions] = useState<PlanAssumptions>(DEFAULT_ASSUMPTIONS);
   const [method, setMethod] = useState<TrainingMethod>('continuous');
   const [runWalkChoice, setRunWalkChoice] = useState<RunWalkChoice>('auto');
+  const [planLength, setPlanLength] = useState<PlanLengthChoice>('standard');
   // The share-link import runs inside this initializer so the saved list and
   // the active-plan initializer below both see its result on first render.
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
@@ -112,13 +115,14 @@ function App() {
   const longestRunKm = unitToKm(longestRecentRun, unit);
   const currentPaceSeconds = currentPaceKm.minutes * 60 + currentPaceKm.seconds;
   const runWalk = method === 'runwalk' ? resolveRunWalkRatio(runWalkChoice, currentPaceSeconds) : null;
+  const planWeeks = resolvePlanWeeks(planLength, method, selectedDistance);
 
   const feasibility = canGenerate
-    ? assessGoalFeasibility(selectedDistance, currentPaceKm, targetPaceKm, weeklyMileageKm, longestRunKm, unit)
+    ? assessGoalFeasibility(selectedDistance, currentPaceKm, targetPaceKm, weeklyMileageKm, longestRunKm, unit, planWeeks)
     : null;
 
   const comparisonOptions = showComparison && canGenerate
-    ? comparePlanOptions(selectedDistance, currentPaceKm, targetPaceKm, weeklyMileageKm, longestRunKm, experienceLevel, unit, runWalk)
+    ? comparePlanOptions(selectedDistance, currentPaceKm, targetPaceKm, weeklyMileageKm, longestRunKm, experienceLevel, unit, runWalk, planWeeks)
     : null;
 
   const handleUnitChange = (nextUnit: DistanceUnit) => {
@@ -143,7 +147,8 @@ function App() {
         longestRunKm,
         experienceLevel,
         unit,
-        runWalk
+        runWalk,
+        planWeeks
       ),
       assumptions
     );
@@ -179,6 +184,7 @@ function App() {
     setAssumptions(DEFAULT_ASSUMPTIONS);
     setMethod('continuous');
     setRunWalkChoice('auto');
+    setPlanLength('standard');
   };
 
   if (activePlan) {
@@ -248,9 +254,12 @@ function App() {
             <TrainingMethodSelector
               method={method}
               ratioChoice={runWalkChoice}
+              planLength={planLength}
+              distance={selectedDistance}
               currentPaceSecondsPerKm={currentPaceSeconds}
               onMethodChange={setMethod}
               onRatioChange={setRunWalkChoice}
+              onPlanLengthChange={setPlanLength}
             />
 
             <TrainingDaysSelector trainingDays={trainingDays} onChange={setTrainingDays} />
