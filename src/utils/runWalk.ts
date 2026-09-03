@@ -1,5 +1,5 @@
-import type { DistanceUnit, ExperienceLevel, Pace, RaceDistance, RunWalkRatio, TrainingDay, TrainingWeek } from '../types';
-import { DISTANCE_INFO } from '../types';
+import type { DistanceUnit, ExperienceLevel, Pace, RaceDistance, RunWalkRatio, TrainingDay, TrainingMethod, TrainingWeek } from '../types';
+import { DISTANCE_INFO, EXTENDED_PLAN_WEEKS, supportsExtendedPlan } from '../types';
 import { KM_PER_MILE } from './units';
 import { DISTANCE_TARGETS, EXPERIENCE_CONFIG } from './trainingTargets';
 
@@ -32,6 +32,27 @@ export function autoRunWalkRatio(paceSecondsPerKm: number): RunWalkRatio {
   if (paceSecondsPerKm <= 405) return RUN_WALK_PRESETS[2].ratio;
   if (paceSecondsPerKm <= 495) return RUN_WALK_PRESETS[3].ratio;
   return RUN_WALK_PRESETS[4].ratio;
+}
+
+// Form choices: a preset id or 'auto', and the distance's standard length or
+// Galloway's extended build.
+export type RunWalkChoice = 'auto' | string;
+export type PlanLengthChoice = 'standard' | 'extended';
+
+export function resolveRunWalkRatio(choice: RunWalkChoice, currentPaceSecondsPerKm: number): RunWalkRatio {
+  const preset = RUN_WALK_PRESETS.find((candidate) => candidate.id === choice);
+  return preset ? preset.ratio : autoRunWalkRatio(currentPaceSecondsPerKm);
+}
+
+// The week count to generate, or undefined for the distance's standard length.
+// An extended choice is ignored for distances that don't offer one.
+export function resolvePlanWeeks(
+  choice: PlanLengthChoice,
+  method: TrainingMethod,
+  distance: RaceDistance | null
+): number | undefined {
+  if (method !== 'runwalk' || choice !== 'extended' || !distance || !supportsExtendedPlan(distance)) return undefined;
+  return EXTENDED_PLAN_WEEKS;
 }
 
 function segmentLabel(seconds: number): string {
@@ -102,6 +123,25 @@ export function runWalkWeekendSchedule(
   return schedule;
 }
 
+// An extended plan spreads the same build over more weeks: the smallest growth
+// step (0.25 km increments, at least 1 km) that still reaches race distance by
+// the last long run, so the runner isn't asked to repeat full-distance long
+// runs. Falls back to the standard step when nothing smaller gets there.
+export function fitLongRunGrowth(
+  totalWeeks: number,
+  startKm: number,
+  targetKm: number,
+  maxGrowthKm: number,
+  tail: number
+): number {
+  const goal = roundHalf(targetKm);
+  for (let growth = 1; growth < maxGrowthKm; growth += 0.25) {
+    const peak = Math.max(...runWalkWeekendSchedule(totalWeeks, startKm, targetKm, growth, tail).map((run) => run.km));
+    if (peak >= goal) return growth;
+  }
+  return maxGrowthKm;
+}
+
 function roundHalf(value: number): number {
   return Math.round(value * 2) / 2;
 }
@@ -140,12 +180,13 @@ const MILE_KM = 1.6;
 
 type Phase = 'Base Building' | 'Build Phase' | 'Peak Training' | 'Taper';
 
-function phaseFor(weekNum: number, totalWeeks: number): Phase {
+// The taper starts right after the last long run, however long the plan is.
+function phaseFor(weekNum: number, totalWeeks: number, lastLongWeek: number): Phase {
+  if (weekNum > lastLongWeek) return 'Taper';
   const progress = weekNum / totalWeeks;
   if (progress < 0.25) return 'Base Building';
   if (progress < 0.5) return 'Build Phase';
-  if (progress < 0.85) return 'Peak Training';
-  return 'Taper';
+  return 'Peak Training';
 }
 
 const KEEP_ORDER = ['Saturday', 'Tuesday', 'Thursday', 'Sunday', 'Wednesday', 'Friday'];
@@ -160,17 +201,22 @@ export interface RunWalkPlanInputs {
   experienceLevel: ExperienceLevel;
   unit: DistanceUnit;
   ratio: RunWalkRatio;
+  /** Defaults to the distance's standard length; longer plans grow the long run more gently. */
+  totalWeeks?: number;
 }
 
 export function generateRunWalkWeeks(inputs: RunWalkPlanInputs): TrainingWeek[] {
   const { distance, trainingDays, experienceLevel, unit, ratio } = inputs;
   const info = DISTANCE_INFO[distance];
-  const totalWeeks = info.weeks;
+  const totalWeeks = inputs.totalWeeks ?? info.weeks;
   const targets = DISTANCE_TARGETS[distance];
-  const growth = EXPERIENCE_CONFIG[experienceLevel].longRunGrowthPerWeek + 0.5;
+  const standardGrowth = EXPERIENCE_CONFIG[experienceLevel].longRunGrowthPerWeek + 0.5;
   const startKm = inputs.longestRecentRun > 0 ? inputs.longestRecentRun : targets.startMileage * 0.3;
   const tail = distance === 'full' ? 3 : 2;
   const lastLongWeek = totalWeeks - tail;
+  const growth = totalWeeks > info.weeks
+    ? fitLongRunGrowth(totalWeeks, startKm, targets.runWalkLongRun, standardGrowth, tail)
+    : standardGrowth;
   const weekend = runWalkWeekendSchedule(totalWeeks, startKm, targets.runWalkLongRun, growth, tail);
   const currentSeconds = paceToSeconds(inputs.currentPace);
   const targetSeconds = paceToSeconds(inputs.targetPace);
@@ -295,7 +341,7 @@ export function generateRunWalkWeeks(inputs: RunWalkPlanInputs): TrainingWeek[] 
     const totalKm = days.reduce((sum, day) => (day.dayType && day.dayType !== 'rest' ? sum + (day.distanceKm ?? 0) : sum), 0);
     return {
       week: weekNum,
-      phase: phaseFor(weekNum, totalWeeks),
+      phase: phaseFor(weekNum, totalWeeks, lastLongWeek),
       days,
       totalMileage: formatDistance(totalKm, unit),
     };

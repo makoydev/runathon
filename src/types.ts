@@ -86,3 +86,18 @@ export const DISTANCE_INFO: Record<RaceDistance, { name: string; km: number; mil
   'half': { name: 'Half Marathon', km: 21.1, miles: 13.1, weeks: 12 },
   'full': { name: 'Marathon', km: 42.2, miles: 26.2, weeks: 16 },
 };
+
+// Galloway's longer half and full marathon programs spread the long-run build
+// over more weeks; shorter races don't need the extra time.
+export const EXTENDED_PLAN_WEEKS = 24;
+
+export function supportsExtendedPlan(distance: RaceDistance): boolean {
+  return distance === 'half' || distance === 'full';
+}
+
+// Plan lengths a distance can be generated at, standard first.
+export function planLengths(distance: RaceDistance): number[] {
+  const lengths = [DISTANCE_INFO[distance].weeks];
+  if (supportsExtendedPlan(distance)) lengths.push(EXTENDED_PLAN_WEEKS);
+  return lengths;
+}

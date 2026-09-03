@@ -1,5 +1,5 @@
 import type { DistanceUnit, ExperienceLevel, Pace, PlanAssumptions, RaceDistance, RunWalkRatio, TrainingPlan } from '../types';
-import { DISTANCE_INFO, EXPERIENCE_INFO, WEEKDAYS } from '../types';
+import { DISTANCE_INFO, EXPERIENCE_INFO, WEEKDAYS, planLengths } from '../types';
 import { DEFAULT_ASSUMPTIONS, isDefaultAssumptions, maxTrainingDays } from './planAssumptions';
 import { isValidRatio, sameRatio } from './runWalk';
 
@@ -16,6 +16,8 @@ export interface SharedPlanInputs {
   assumptions: PlanAssumptions;
   /** Present for run-walk plans. */
   runWalk?: RunWalkRatio;
+  /** Present when the plan is longer than the distance's standard length. */
+  planWeeks?: number;
 }
 
 const MIN_TRAINING_DAYS = 3;
@@ -45,6 +47,7 @@ export function encodeShareParams(plan: TrainingPlan): string {
   if (plan.currentWeeklyMileage) params.set('wm', String(plan.currentWeeklyMileage));
   if (plan.longestRecentRun) params.set('lr', String(plan.longestRecentRun));
   if (plan.runWalk) params.set('rw', `${plan.runWalk.runSeconds}-${plan.runWalk.walkSeconds}`);
+  if (plan.weeks.length !== DISTANCE_INFO[plan.distance].weeks) params.set('w', String(plan.weeks.length));
   const assumptions = plan.assumptions ?? DEFAULT_ASSUMPTIONS;
   if (!isDefaultAssumptions(assumptions)) {
     // Weekdays travel as indexes: ld=2 is Wednesday, ud=04 is Monday+Friday.
@@ -92,6 +95,14 @@ function parseRunWalk(value: string | null): RunWalkRatio | undefined | null {
   return isValidRatio(ratio) ? ratio : null;
 }
 
+// Only the lengths the form offers for that distance are accepted.
+function parsePlanWeeks(value: string | null, distance: RaceDistance): number | undefined | null {
+  if (value === null) return undefined;
+  if (!/^\d{1,2}$/.test(value)) return null;
+  const weeks = Number(value);
+  return planLengths(distance).includes(weeks) ? weeks : null;
+}
+
 function parsePaceSeconds(value: string | null): number | null {
   if (!value || !/^\d+$/.test(value)) return null;
   const seconds = Number(value);
@@ -137,9 +148,13 @@ export function decodeShareParams(search: string): SharedPlanInputs | null {
   const runWalk = parseRunWalk(params.get('rw'));
   if (runWalk === null) return null;
 
+  const planWeeks = parsePlanWeeks(params.get('w'), distance as RaceDistance);
+  if (planWeeks === null) return null;
+
   return {
     assumptions,
     runWalk,
+    planWeeks,
     distance: distance as RaceDistance,
     currentPace: paceFromSeconds(currentPaceSeconds),
     targetPace: paceFromSeconds(targetPaceSeconds),
@@ -173,6 +188,7 @@ export function sameInputs(a: TrainingPlan, b: TrainingPlan): boolean {
     (a.longestRecentRun ?? 0) === (b.longestRecentRun ?? 0) &&
     (a.experienceLevel ?? 'intermediate') === (b.experienceLevel ?? 'intermediate') &&
     (a.unit ?? 'km') === (b.unit ?? 'km') &&
+    a.weeks.length === b.weeks.length &&
     sameRatio(a.runWalk, b.runWalk)
   );
 }

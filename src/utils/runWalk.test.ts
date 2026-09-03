@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { autoRunWalkRatio, ratioLabel, runWalkWeekendSchedule, generateRunWalkWeeks, isValidRatio } from './runWalk'
+import { autoRunWalkRatio, ratioLabel, runWalkWeekendSchedule, generateRunWalkWeeks, isValidRatio, fitLongRunGrowth, resolvePlanWeeks } from './runWalk'
 import { generateTrainingPlan } from './planGenerator'
 import { encodeShareParams, decodeShareParams, sameInputs } from './planShare'
 
@@ -130,5 +130,51 @@ describe('run-walk plans through the generator', () => {
     const continuous = generateTrainingPlan('full', { minutes: 9, seconds: 59 }, { minutes: 8, seconds: 30 }, 4, 20, 8, 'beginner', 'km')
     expect(sameInputs(plan, continuous)).toBe(false)
     expect(sameInputs(plan, generateTrainingPlan('full', { minutes: 9, seconds: 59 }, { minutes: 8, seconds: 30 }, 4, 20, 8, 'beginner', 'km', oneToOne))).toBe(true)
+  })
+})
+
+describe('extended run-walk plans', () => {
+  const inputs = ['full', { minutes: 9, seconds: 59 }, { minutes: 8, seconds: 30 }, 4, 20, 8, 'advanced', 'km', oneToOne] as const
+  const standard = generateTrainingPlan(...inputs)
+  const extended = generateTrainingPlan(...inputs, 24)
+
+  it('picks the gentlest long-run growth that still reaches race distance', () => {
+    expect(fitLongRunGrowth(24, 8, 42.2, 3.5, 3)).toBe(3)
+    // Nothing gentler gets there, so the standard step stays.
+    expect(fitLongRunGrowth(24, 8, 42.2, 2.5, 3)).toBe(2.5)
+  })
+
+  it('reaches race distance once, three weeks out, and tapers after it', () => {
+    const longRuns = extended.weeks.map((week) => week.days.find((day) => day.workout === 'Long Run-Walk')?.distanceKm ?? 0)
+    expect(extended.weeks).toHaveLength(24)
+    expect(longRuns[20]).toBe(42)
+    expect(longRuns.filter((km) => km === 42)).toHaveLength(1)
+    expect(longRuns.slice(21).every((km) => km === 0)).toBe(true)
+    expect(extended.weeks[20].phase).toBe('Peak Training')
+    expect(extended.weeks[21].phase).toBe('Taper')
+    expect(extended.summary).toContain('This 24-week plan')
+  })
+
+  it('leaves the standard plan untouched', () => {
+    expect(standard.weeks).toHaveLength(16)
+    expect(standard.weeks.map((week) => week.phase)).toEqual(generateTrainingPlan(...inputs, 16).weeks.map((week) => week.phase))
+    expect(sameInputs(standard, extended)).toBe(false)
+  })
+
+  it('round-trips the length through share links and rejects lengths the form does not offer', () => {
+    expect(encodeShareParams(standard)).not.toContain('&w=')
+    const params = encodeShareParams(extended)
+    expect(params).toContain('w=24')
+    expect(decodeShareParams(`?${params}`)?.planWeeks).toBe(24)
+    expect(decodeShareParams('?d=full&cp=599&tp=510&td=4&w=20')).toBeNull()
+    expect(decodeShareParams('?d=5k&cp=599&tp=510&td=4&w=24')).toBeNull()
+  })
+
+  it('only applies the extended length to run-walk half and full marathon plans', () => {
+    expect(resolvePlanWeeks('extended', 'runwalk', 'full')).toBe(24)
+    expect(resolvePlanWeeks('extended', 'runwalk', 'half')).toBe(24)
+    expect(resolvePlanWeeks('extended', 'runwalk', '5k')).toBeUndefined()
+    expect(resolvePlanWeeks('extended', 'continuous', 'full')).toBeUndefined()
+    expect(resolvePlanWeeks('standard', 'runwalk', 'full')).toBeUndefined()
   })
 })

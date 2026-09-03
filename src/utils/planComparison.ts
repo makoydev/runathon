@@ -50,7 +50,8 @@ export function comparePlanOptions(
   longestRunKm: number,
   experienceLevel: ExperienceLevel,
   unit: DistanceUnit,
-  runWalk: RunWalkRatio | null = null
+  runWalk: RunWalkRatio | null = null,
+  planWeeks?: number
 ): PlanOptionStats[] {
   return COMPARISON_DAY_OPTIONS.map((trainingDays) =>
     summarizePlan(
@@ -63,7 +64,8 @@ export function comparePlanOptions(
         longestRunKm,
         experienceLevel,
         unit,
-        runWalk
+        runWalk,
+        planWeeks
       )
     )
   );

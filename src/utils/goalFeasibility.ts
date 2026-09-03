@@ -28,7 +28,8 @@ export function assessGoalFeasibility(
   targetPace: Pace,
   currentWeeklyMileage: number,
   longestRecentRun: number,
-  unit: DistanceUnit = 'km'
+  unit: DistanceUnit = 'km',
+  planWeeks: number = DISTANCE_INFO[distance].weeks
 ): GoalFeasibility {
   const info = DISTANCE_INFO[distance];
   // Judged against what the generated plan will actually ask for at its peak.
@@ -42,23 +43,23 @@ export function assessGoalFeasibility(
   const currentSeconds = paceToSeconds(currentPace);
   const targetSeconds = paceToSeconds(targetPace);
   const improvementFraction = currentSeconds > 0 ? (currentSeconds - targetSeconds) / currentSeconds : 0;
-  const improvementPerWeek = improvementFraction / info.weeks;
+  const improvementPerWeek = improvementFraction / planWeeks;
 
   if (improvementFraction <= 0) {
     ratings.push('conservative');
     reasons.push('Your target pace is not faster than your current pace, so the pace goal carries no risk.');
   } else if (improvementPerWeek < 0.003) {
     ratings.push('conservative');
-    reasons.push(`A ${Math.round(improvementFraction * 100)}% pace improvement over ${info.weeks} weeks is a gentle progression.`);
+    reasons.push(`A ${Math.round(improvementFraction * 100)}% pace improvement over ${planWeeks} weeks is a gentle progression.`);
   } else if (improvementPerWeek < 0.006) {
     ratings.push('moderate');
-    reasons.push(`A ${Math.round(improvementFraction * 100)}% pace improvement over ${info.weeks} weeks is achievable with consistent training.`);
+    reasons.push(`A ${Math.round(improvementFraction * 100)}% pace improvement over ${planWeeks} weeks is achievable with consistent training.`);
   } else if (improvementPerWeek < 0.01) {
     ratings.push('aggressive');
-    reasons.push(`A ${Math.round(improvementFraction * 100)}% pace improvement over ${info.weeks} weeks demands near-perfect training consistency.`);
+    reasons.push(`A ${Math.round(improvementFraction * 100)}% pace improvement over ${planWeeks} weeks demands near-perfect training consistency.`);
   } else {
     ratings.push('high-risk');
-    reasons.push(`A ${Math.round(improvementFraction * 100)}% pace improvement over ${info.weeks} weeks is unlikely without injury risk - consider a later race or softer target.`);
+    reasons.push(`A ${Math.round(improvementFraction * 100)}% pace improvement over ${planWeeks} weeks is unlikely without injury risk - consider a later race or softer target.`);
   }
 
   // Mileage readiness: how much weekly volume must grow to reach a typical peak.

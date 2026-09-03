@@ -357,9 +357,11 @@ export function generateTrainingPlan(
   longestRecentRun = 0,
   experienceLevel: ExperienceLevel = 'intermediate',
   unit: DistanceUnit = 'km',
-  runWalk: RunWalkRatio | null = null
+  runWalk: RunWalkRatio | null = null,
+  planWeeks?: number
 ): TrainingPlan {
   const info = DISTANCE_INFO[distance];
+  const totalWeeks = planWeeks ?? info.weeks;
   const normalizedCurrentPace = secondsToPace(paceToSeconds(currentPace));
   const normalizedTargetPace = secondsToPace(paceToSeconds(targetPace));
   const normalizedWeeklyMileage = normalizeDistance(currentWeeklyMileage);
@@ -374,13 +376,14 @@ export function generateTrainingPlan(
         experienceLevel,
         unit,
         ratio: runWalk,
+        totalWeeks,
       })
     : [];
 
-  for (let i = 1; i <= info.weeks && !runWalk; i++) {
+  for (let i = 1; i <= totalWeeks && !runWalk; i++) {
     weeks.push(generateWeeklyPlan(
       i,
-      info.weeks,
+      totalWeeks,
       distance,
       normalizedCurrentPace,
       normalizedTargetPace,
@@ -430,6 +433,6 @@ export function generateTrainingPlan(
     method: runWalk ? 'runwalk' : 'continuous',
     runWalk: runWalk ?? undefined,
     weeks,
-    summary: `This ${info.weeks}-week plan will guide you from ${formatPace(normalizedCurrentPace, unit)} to ${formatPace(normalizedTargetPace, unit)} ${unit === 'mi' ? 'per mile' : 'per kilometer'} on ${trainingDays} days/week. ${improvementText} ${distributionNote}${peakNote}${trainingLoadNote}${experienceNote}`,
+    summary: `This ${totalWeeks}-week plan will guide you from ${formatPace(normalizedCurrentPace, unit)} to ${formatPace(normalizedTargetPace, unit)} ${unit === 'mi' ? 'per mile' : 'per kilometer'} on ${trainingDays} days/week. ${improvementText} ${distributionNote}${peakNote}${trainingLoadNote}${experienceNote}`,
   };
 }
