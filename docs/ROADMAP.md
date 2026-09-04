@@ -93,9 +93,9 @@ This roadmap focuses on improvements that make Runathon more useful for runners 
   - Why: training plans are often reviewed at night or outdoors.
   - Notes: implement with CSS variables or Tailwind theme tokens.
 
-- [ ] Add clearer empty and warning states.
+- [x] Add clearer empty and warning states.
   - Why: invalid pace or feasibility warnings should be hard to miss but not disruptive.
-  - Notes: avoid blocking generation except for invalid input; warn for risky goals.
+  - Notes: `validatePlanInputs` separates blockers (invalid input only) from warnings; field errors render inline via `InlineNotice`, the sidebar lists blockers beside the generate button, and the saved plans panel has an empty state.
 
 ## Priority 5: Sharing And Integrations
 
