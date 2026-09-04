@@ -12,6 +12,7 @@ import { SavedPlansList } from './components/SavedPlansList';
 import { UnitToggle } from './components/UnitToggle';
 import { ThemeToggle } from './components/ThemeToggle';
 import { TrainingMethodSelector } from './components/TrainingMethodSelector';
+import { InlineNotice } from './components/InlineNotice';
 import { resolveRunWalkRatio, resolvePlanWeeks } from './utils/runWalk';
 import type { RunWalkChoice, PlanLengthChoice } from './utils/runWalk';
 import { generateTrainingPlan } from './utils/planGenerator';
@@ -21,7 +22,8 @@ import type { SavedPlan } from './utils/planStorage';
 import { clearPlanProgress } from './utils/progressStorage';
 import { decodeShareParams, sameInputs } from './utils/planShare';
 import { comparePlanOptions } from './utils/planComparison';
-import { applyPlanAssumptions, maxTrainingDays, DEFAULT_ASSUMPTIONS } from './utils/planAssumptions';
+import { applyPlanAssumptions, DEFAULT_ASSUMPTIONS } from './utils/planAssumptions';
+import { validatePlanInputs, issueFor } from './utils/planInputs';
 import { loadUnit, storeUnit, convertPace, unitToKm, kmToUnit } from './utils/units';
 import type { RaceDistance, Pace, ExperienceLevel, DistanceUnit, PlanAssumptions, TrainingMethod } from './types';
 
@@ -93,20 +95,18 @@ function App() {
     return loadSavedPlans().find((saved) => saved.id === activeId) ?? null;
   });
 
-  const hasValidPaces =
-    (currentPace.minutes > 0 || currentPace.seconds > 0) &&
-    (targetPace.minutes > 0 || targetPace.seconds > 0);
-  const currentSeconds = currentPace.minutes * 60 + currentPace.seconds;
-  const targetSeconds = targetPace.minutes * 60 + targetPace.seconds;
-  const targetNotFaster = targetSeconds >= currentSeconds;
-  const hasValidTrainingLoad =
-    currentWeeklyMileage > 0 &&
-    longestRecentRun > 0 &&
-    longestRecentRun <= currentWeeklyMileage;
-
-  const hasValidSchedule = trainingDays <= maxTrainingDays(assumptions);
-
-  const canGenerate = selectedDistance !== null && hasValidPaces && hasValidTrainingLoad && hasValidSchedule;
+  // Field errors render next to their inputs; the sidebar repeats the full
+  // list beside the generate button so nothing blocks silently.
+  const { blockers, warnings } = validatePlanInputs({
+    distance: selectedDistance,
+    currentPace,
+    targetPace,
+    currentWeeklyMileage,
+    longestRecentRun,
+    trainingDays,
+    assumptions,
+  });
+  const canGenerate = selectedDistance !== null && blockers.length === 0;
 
   // Inputs are edited in the display unit; convert to canonical km at this boundary.
   const currentPaceKm = convertPace(currentPace, unit, 'km');
@@ -231,12 +231,16 @@ function App() {
                 label="Current Pace"
                 description={`Your current average pace per ${unit === 'mi' ? 'mile' : 'kilometer'}`}
                 pace={currentPace}
+                unit={unit}
+                error={issueFor(blockers, 'currentPace')}
                 onChange={setCurrentPace}
               />
               <PaceInput
                 label="Target Pace"
                 description={`Your goal pace per ${unit === 'mi' ? 'mile' : 'kilometer'} for race day`}
                 pace={targetPace}
+                unit={unit}
+                error={issueFor(blockers, 'targetPace')}
                 onChange={setTargetPace}
               />
             </div>
@@ -245,6 +249,8 @@ function App() {
               currentWeeklyMileage={currentWeeklyMileage}
               longestRecentRun={longestRecentRun}
               unit={unit}
+              weeklyMileageError={issueFor(blockers, 'weeklyMileage')}
+              longestRunError={issueFor(blockers, 'longestRun')}
               onCurrentWeeklyMileageChange={setCurrentWeeklyMileage}
               onLongestRecentRunChange={setLongestRecentRun}
             />
@@ -311,17 +317,22 @@ function App() {
               Generate Training Plan
             </button>
 
-            {hasValidPaces && targetNotFaster && (
-              <p role="alert" className="text-center text-amber-600 dark:text-amber-300 text-sm">
-                Target pace is not faster than your current pace. The plan will focus on maintenance unless you set a quicker goal.
-              </p>
+            {blockers.length > 0 && (
+              <InlineNotice tone="info" role="status" className="text-left">
+                <p className="font-semibold text-slate-700 dark:text-slate-200">Before you generate</p>
+                <ul className="mt-1 space-y-1 list-disc list-inside">
+                  {blockers.map((issue) => (
+                    <li key={issue.field}>{issue.message}</li>
+                  ))}
+                </ul>
+              </InlineNotice>
             )}
 
-            {!selectedDistance && (
-              <p role="status" className="text-center text-slate-400 dark:text-slate-500 text-sm">
-                Select a race distance to get started
-              </p>
-            )}
+            {warnings.map((issue) => (
+              <InlineNotice key={issue.field} tone="warning" role="alert">
+                {issue.message}
+              </InlineNotice>
+            ))}
 
             <SavedPlansList savedPlans={savedPlans} onView={handleViewSaved} onDelete={handleDeleteSaved} />
           </aside>

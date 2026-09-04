@@ -1,9 +1,13 @@
 import type { DistanceUnit } from '../types';
+import { InlineNotice } from './InlineNotice';
 
 interface CurrentLoadInputsProps {
   currentWeeklyMileage: number;
   longestRecentRun: number;
   unit?: DistanceUnit;
+  // Field-level problems from the plan input check, shown under the field.
+  weeklyMileageError?: string;
+  longestRunError?: string;
   onCurrentWeeklyMileageChange: (distance: number) => void;
   onLongestRecentRunChange: (distance: number) => void;
 }
@@ -22,10 +26,17 @@ export function CurrentLoadInputs({
   currentWeeklyMileage,
   longestRecentRun,
   unit = 'km',
+  weeklyMileageError,
+  longestRunError,
   onCurrentWeeklyMileageChange,
   onLongestRecentRunChange,
 }: CurrentLoadInputsProps) {
-  const longestRunExceedsMileage = longestRecentRun > currentWeeklyMileage;
+  const inputClass = (invalid: boolean) =>
+    `w-full px-4 py-3 text-2xl font-mono text-center border rounded-lg focus:ring-2 outline-none bg-white/80 dark:bg-slate-800/80 ${
+      invalid
+        ? 'border-rose-300 dark:border-rose-700 focus:ring-rose-300 dark:focus:ring-rose-600 focus:border-rose-300 dark:focus:border-rose-600'
+        : 'border-slate-200 dark:border-slate-700 focus:ring-violet-300 dark:focus:ring-violet-500 focus:border-violet-300 dark:focus:border-violet-500'
+    }`;
 
   return (
     <section className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
@@ -46,15 +57,21 @@ export function CurrentLoadInputs({
               pattern="[0-9]*[.]?[0-9]*"
               value={currentWeeklyMileage.toString()}
               onChange={(event) => onCurrentWeeklyMileageChange(parseDistanceInput(event.target.value, 250))}
-              className="w-full px-4 py-3 text-2xl font-mono text-center border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-violet-300 dark:focus:ring-violet-500 focus:border-violet-300 dark:focus:border-violet-500 outline-none bg-white/80 dark:bg-slate-800/80"
+              className={inputClass(Boolean(weeklyMileageError))}
               aria-label="Current weekly mileage"
-              aria-describedby="current-weekly-mileage-help"
+              aria-describedby={weeklyMileageError ? 'current-weekly-mileage-help current-weekly-mileage-error' : 'current-weekly-mileage-help'}
+              aria-invalid={Boolean(weeklyMileageError)}
             />
             <span className="text-lg text-slate-500 dark:text-slate-400 font-medium" aria-hidden="true">{unit}/wk</span>
           </div>
           <span id="current-weekly-mileage-help" className="block text-xs text-slate-400 dark:text-slate-500 mt-1">
             Average distance you run in a normal recent week.
           </span>
+          {weeklyMileageError && (
+            <InlineNotice tone="error" id="current-weekly-mileage-error" className="mt-3">
+              {weeklyMileageError}
+            </InlineNotice>
+          )}
         </label>
 
         <label className="block">
@@ -66,24 +83,23 @@ export function CurrentLoadInputs({
               pattern="[0-9]*[.]?[0-9]*"
               value={longestRecentRun.toString()}
               onChange={(event) => onLongestRecentRunChange(parseDistanceInput(event.target.value, 100))}
-              className="w-full px-4 py-3 text-2xl font-mono text-center border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-violet-300 dark:focus:ring-violet-500 focus:border-violet-300 dark:focus:border-violet-500 outline-none bg-white/80 dark:bg-slate-800/80"
+              className={inputClass(Boolean(longestRunError))}
               aria-label="Longest recent run"
-              aria-describedby="longest-recent-run-help"
-              aria-invalid={longestRunExceedsMileage}
+              aria-describedby={longestRunError ? 'longest-recent-run-help longest-recent-run-error' : 'longest-recent-run-help'}
+              aria-invalid={Boolean(longestRunError)}
             />
             <span className="text-lg text-slate-500 dark:text-slate-400 font-medium" aria-hidden="true">{unit}</span>
           </div>
           <span id="longest-recent-run-help" className="block text-xs text-slate-400 dark:text-slate-500 mt-1">
             Longest single run from the last few weeks.
           </span>
+          {longestRunError && (
+            <InlineNotice tone="error" id="longest-recent-run-error" className="mt-3">
+              {longestRunError}
+            </InlineNotice>
+          )}
         </label>
       </div>
-
-      {longestRunExceedsMileage && (
-        <p role="alert" className="text-sm text-amber-600 dark:text-amber-300">
-          Longest recent run cannot be greater than your current weekly mileage.
-        </p>
-      )}
     </section>
   );
 }

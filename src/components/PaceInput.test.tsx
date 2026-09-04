@@ -18,6 +18,26 @@ function PaceInputHarness() {
 }
 
 describe('PaceInput', () => {
+  it('labels the pace with the active unit and describes the field by its error', () => {
+    render(
+      <PaceInput
+        label="Target Pace"
+        description="Your goal pace per mile for race day"
+        pace={{ minutes: 0, seconds: 0 }}
+        unit="mi"
+        error="Enter your target pace (it cannot be 0:00)."
+        onChange={() => {}}
+      />
+    )
+
+    expect(screen.getByText('/mi')).toBeInTheDocument()
+    const minutes = screen.getByLabelText('Target Pace minutes')
+    expect(minutes).toBeInvalid()
+    expect(minutes).toHaveAccessibleDescription(/Your goal pace per mile for race day.*cannot be 0:00/)
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter your target pace')
+  })
+
+
   it('treats a cleared input as zero instead of keeping a stale value', () => {
     render(<PaceInputHarness />)
 

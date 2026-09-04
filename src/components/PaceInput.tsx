@@ -1,14 +1,18 @@
 import { useId } from 'react';
-import type { Pace } from '../types';
+import type { DistanceUnit, Pace } from '../types';
+import { InlineNotice } from './InlineNotice';
 
 interface PaceInputProps {
   label: string;
   description: string;
   pace: Pace;
+  unit?: DistanceUnit;
+  // Shown under the fields and marks both as invalid.
+  error?: string;
   onChange: (pace: Pace) => void;
 }
 
-export function PaceInput({ label, description, pace, onChange }: PaceInputProps) {
+export function PaceInput({ label, description, pace, unit = 'km', error, onChange }: PaceInputProps) {
   const id = useId();
 
   const parsePacePart = (value: string): number => {
@@ -30,6 +34,14 @@ export function PaceInput({ label, description, pace, onChange }: PaceInputProps
   const minutesId = `${id}-minutes`;
   const secondsId = `${id}-seconds`;
   const descriptionId = `${id}-description`;
+  const errorId = `${id}-error`;
+  const describedBy = error ? `${descriptionId} ${errorId}` : descriptionId;
+  const invalid = Boolean(error);
+  const inputClass = `w-full px-4 py-3 text-2xl font-mono text-center border rounded-lg focus:ring-2 outline-none bg-white/80 dark:bg-slate-800/80 ${
+    invalid
+      ? 'border-rose-300 dark:border-rose-700 focus:ring-rose-300 dark:focus:ring-rose-600 focus:border-rose-300 dark:focus:border-rose-600'
+      : 'border-slate-200 dark:border-slate-700 focus:ring-violet-300 dark:focus:ring-violet-500 focus:border-violet-300 dark:focus:border-violet-500'
+  }`;
 
   return (
     <fieldset className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -47,8 +59,9 @@ export function PaceInput({ label, description, pace, onChange }: PaceInputProps
             pattern="[0-9]*"
             value={pace.minutes.toString()}
             onChange={(e) => handleMinutesChange(e.target.value)}
-            aria-describedby={descriptionId}
-            className="w-full px-4 py-3 text-2xl font-mono text-center border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-violet-300 dark:focus:ring-violet-500 focus:border-violet-300 dark:focus:border-violet-500 outline-none bg-white/80 dark:bg-slate-800/80"
+            aria-describedby={describedBy}
+            aria-invalid={invalid}
+            className={inputClass}
             placeholder="0"
           />
           <div className="text-xs text-slate-400 dark:text-slate-500 text-center mt-1" aria-hidden="true">minutes</div>
@@ -63,14 +76,20 @@ export function PaceInput({ label, description, pace, onChange }: PaceInputProps
             pattern="[0-9]*"
             value={pace.seconds.toString()}
             onChange={(e) => handleSecondsChange(e.target.value)}
-            aria-describedby={descriptionId}
-            className="w-full px-4 py-3 text-2xl font-mono text-center border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-violet-300 dark:focus:ring-violet-500 focus:border-violet-300 dark:focus:border-violet-500 outline-none bg-white/80 dark:bg-slate-800/80"
+            aria-describedby={describedBy}
+            aria-invalid={invalid}
+            className={inputClass}
             placeholder="0"
           />
           <div className="text-xs text-slate-400 dark:text-slate-500 text-center mt-1" aria-hidden="true">seconds</div>
         </div>
-        <span className="text-lg text-slate-500 dark:text-slate-400 font-medium" aria-hidden="true">/km</span>
+        <span className="text-lg text-slate-500 dark:text-slate-400 font-medium" aria-hidden="true">/{unit}</span>
       </div>
+      {error && (
+        <InlineNotice tone="error" id={errorId} className="mt-4">
+          {error}
+        </InlineNotice>
+      )}
     </fieldset>
   );
 }

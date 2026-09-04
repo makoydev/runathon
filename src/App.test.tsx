@@ -308,6 +308,49 @@ describe('App', () => {
     expect(screen.getByText(/This 24-week plan/)).toBeInTheDocument()
   })
 
+  it('explains a cleared pace next to the field and beside the generate button', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /5K, 5 kilometers/i }))
+    expect(screen.queryByText('Before you generate')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Current Pace minutes'), { target: { value: '' } })
+
+    expect(screen.getByLabelText('Current Pace minutes')).toBeInvalid()
+    expect(screen.getByLabelText('Current Pace seconds')).toBeInvalid()
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter your current pace')
+    const checklist = screen.getByText('Before you generate').closest('[role="status"]')
+    expect(checklist).toHaveTextContent('Enter your current pace')
+    expect(screen.getByRole('button', { name: /complete the required training details/i })).toBeDisabled()
+
+    fireEvent.change(screen.getByLabelText('Current Pace minutes'), { target: { value: '6' } })
+    expect(screen.queryByText(/Enter your current pace/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Before you generate')).not.toBeInTheDocument()
+  })
+
+  it('warns without blocking when the target pace is not faster', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /5K, 5 kilometers/i }))
+    fireEvent.change(screen.getByLabelText('Target Pace minutes'), { target: { value: '7' } })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Target pace is not faster than your current pace')
+    expect(screen.getByRole('button', { name: /generate your personalized training plan/i })).toBeEnabled()
+  })
+
+  it('shows an empty state until a plan has been saved', () => {
+    render(<App />)
+
+    expect(screen.getByRole('region', { name: 'No saved plans' })).toHaveTextContent('No saved plans yet')
+
+    fireEvent.click(screen.getByRole('button', { name: /5K, 5 kilometers/i }))
+    fireEvent.click(screen.getByRole('button', { name: /generate your personalized training plan/i }))
+    fireEvent.click(screen.getByRole('button', { name: /create a new training plan/i }))
+
+    expect(screen.queryByRole('region', { name: 'No saved plans' })).not.toBeInTheDocument()
+    expect(screen.getByText('Saved Plans')).toBeInTheDocument()
+  })
+
   it('deletes a saved plan from the list', () => {
     render(<App />)
 

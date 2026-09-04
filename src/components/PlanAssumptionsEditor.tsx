@@ -1,6 +1,7 @@
 import type { PlanAssumptions } from '../types';
 import { WEEKDAYS } from '../types';
 import { maxTrainingDays } from '../utils/planAssumptions';
+import { InlineNotice } from './InlineNotice';
 
 interface PlanAssumptionsEditorProps {
   assumptions: PlanAssumptions;
@@ -96,10 +97,10 @@ export function PlanAssumptionsEditor({ assumptions, trainingDays, onChange }: P
       </div>
 
       {tooFewDays && (
-        <p role="alert" className="mt-4 text-sm text-amber-600 dark:text-amber-300">
+        <InlineNotice tone="error" className="mt-4">
           Only {availableDays} days are available, but the plan needs {trainingDays} training days.
           Free up a weekday or reduce your training days.
-        </p>
+        </InlineNotice>
       )}
     </section>
   );

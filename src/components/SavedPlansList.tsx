@@ -15,7 +15,19 @@ function formatCreatedAt(createdAt: string): string {
 }
 
 export function SavedPlansList({ savedPlans, onView, onDelete }: SavedPlansListProps) {
-  if (savedPlans.length === 0) return null;
+  if (savedPlans.length === 0) {
+    return (
+      <section
+        aria-label="No saved plans"
+        className="p-6 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 text-center"
+      >
+        <p className="text-sm font-medium text-slate-600 dark:text-slate-300">No saved plans yet</p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Every plan you generate is saved on this device and listed here, so you can come back to it later.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
